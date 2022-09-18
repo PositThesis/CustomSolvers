@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Eigen/Dense>
+#include <Eigen/QR>
 #include <utility>
 #include <cmath>
 
@@ -10,10 +11,7 @@ using Eigen::Matrix2;
 
 template <typename Scalar>
 Matrix2<Scalar> make_rotation(Scalar x, Scalar y) {
-//   Scalar angle = std::atan2(xy(1), yy(0));
-//   Scalar sine = std::sin(angle);
-//   Scalar cosine = std::cos(angle);
-  Scalar denominator = std::sqrt(x * x + y * y)
+  Scalar denominator = std::sqrt(x * x + y * y);
   Scalar c = x / denominator;
   Scalar s = -y / denominator;
 
@@ -26,12 +24,12 @@ template <typename Scalar>
 struct QRDecompositionResult {
     MatrixX<Scalar> Q;
     MatrixX<Scalar> R;
-}
+};
 
 template <typename Scalar>
-std::pair<MatrixX<Scalar>, MatrixX<Scalar>> qr_decompose_hessenberg(MatrixX<Scalar> &H) {
+QRDecompositionResult<Scalar> qr_decompose_hessenberg(MatrixX<Scalar> &H) {
   MatrixX<Scalar> Q = MatrixX<Scalar>::Identity(H.rows(), H.rows());
-  MattixX<Scalar> R = H;
+  MatrixX<Scalar> R = H;
 
   for (Eigen::Index col = 0; col < H.cols(); col++) {
     Matrix2<Scalar> rot = make_rotation(R(col, col), R(col+1, col));
@@ -40,7 +38,7 @@ std::pair<MatrixX<Scalar>, MatrixX<Scalar>> qr_decompose_hessenberg(MatrixX<Scal
   }
 
   QRDecompositionResult<Scalar> result;
-  result.Q = Q;
+  result.Q = Q.transpose();
   result.R = R;
   return result;
 }

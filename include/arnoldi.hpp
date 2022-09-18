@@ -13,20 +13,20 @@ struct ArnoldiResult {
 };
 
 template <typename Scalar>
-ArnoldiResult<Scalar> arnoldi(MatrixX<Scalar> V, MatrixX<Scalar> A, VectorX<Scalar> rhs) {
-  VectorX<Scalar> v_next = A * V.col(V.cols() - 1)
+ArnoldiResult<Scalar> arnoldi_step(MatrixX<Scalar> V, MatrixX<Scalar> A, VectorX<Scalar> rhs) {
+  VectorX<Scalar> v_next = A * V.col(V.cols() - 1);
   // removing the contribution in the direction of one vector might change the contributions in the directions of other vectors, cannot do all at once
-  // VectorX<Scalar> h_col = V.adjoint() * v_next;
-  VectorX<Scalar> h_col = VectorX::Zero(V.cols() + 1);
+  // VectorX<Scalar> h_n = V.adjoint() * v_next;
+  VectorX<Scalar> h_n = VectorX<Scalar>::Zero(V.cols() + 1);
   for (Eigen::Index i = 0; i < V.cols(); i++) {
-    h_col(i) = V.col(i).adjoint() * v_next;
-    v_next -= h_col(i) * V.col(i);
+    h_n(i) = V.col(i).adjoint() * v_next;
+    v_next -= h_n(i) * V.col(i);
   }
-  h_col(V.cols()) = v_next.norm();
+  h_n(V.cols()) = v_next.norm();
   v_next /= v_next.norm();
 
   ArnoldiResult<Scalar> result;
   result.v_next = v_next;
-  result.h_next = h_next;
+  result.h_n = h_n;
   return result;
 }

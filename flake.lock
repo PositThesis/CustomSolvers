@@ -1,0 +1,124 @@
+{
+  "nodes": {
+    "flake-utils": {
+      "locked": {
+        "lastModified": 1659877975,
+        "narHash": "sha256-zllb8aq3YO3h8B/U0/J1WBgAL8EX5yWf5pMj3G0NAmc=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "c0e246b9b83f637f4681389ecabcb2681b4f3af0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "flake-utils_2": {
+      "locked": {
+        "lastModified": 1656928814,
+        "narHash": "sha256-RIFfgBuKz6Hp89yRr7+NR5tzIAbn52h8vT6vXkYjZoM=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "7e2a3b3dfd9af950a856d66b0a7d01e3c18aa249",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1663494212,
+        "narHash": "sha256-gUJir35fXQB7jQKCTffM8str9N6N2soaOL0TqQfJod4=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "b47d4447dc2ba34f793436e6631fbdd56b12934a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "release-22.05",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
+      "locked": {
+        "lastModified": 1656955776,
+        "narHash": "sha256-1aMu67m+orlGxVwfiX3RxTEVFoq/RmKa/L5u9zU3UNQ=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "cc16da2c92041cbe817c40f62aac87c99104e9c2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "release-22.05",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "online_lib": {
+      "inputs": {
+        "flake-utils": "flake-utils_2",
+        "nixpkgs": "nixpkgs_2",
+        "universal_patch": "universal_patch",
+        "universal_src": "universal_src"
+      },
+      "locked": {
+        "lastModified": 1663423387,
+        "narHash": "sha256-k39JVT3QLDiiPkoR7Wf0py2uVIOM5FmFKGGIcmeU7G4=",
+        "ref": "master",
+        "rev": "49a9b89427a11c7de3088cebc4aa54573527b509",
+        "revCount": 23,
+        "type": "git",
+        "url": "http://10.0.0.1:3000/aethan/EigenPositIntegration.git"
+      },
+      "original": {
+        "type": "git",
+        "url": "http://10.0.0.1:3000/aethan/EigenPositIntegration.git"
+      }
+    },
+    "root": {
+      "inputs": {
+        "flake-utils": "flake-utils",
+        "nixpkgs": "nixpkgs",
+        "online_lib": "online_lib"
+      }
+    },
+    "universal_patch": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-3GpOT3RHFGTNdTXL+XjqKRnm6iONiO5SD4LtjaCiEwM=",
+        "path": "./patch",
+        "type": "path"
+      },
+      "original": {
+        "path": "./patch",
+        "type": "path"
+      }
+    },
+    "universal_src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1656966993,
+        "narHash": "sha256-jm6tRYMlmv+SxbNkaVCH6GmkcfHmwq3PEqwBMzJBySo=",
+        "owner": "stillwater-sc",
+        "repo": "universal",
+        "rev": "3504810583f4625f9bce998ae5346a6a2ae430ab",
+        "type": "github"
+      },
+      "original": {
+        "owner": "stillwater-sc",
+        "repo": "universal",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
