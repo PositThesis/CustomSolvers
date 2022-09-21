@@ -36,17 +36,16 @@ endif(DEBUG)
 message("Flags: ${CMAKE_CXX_FLAGS}")
 
 list(APPEND USE_Type_Flags USE_Float USE_Double USE_LongDouble USE_Posit16 USE_Posit32 USE_Posit64)
-# list(APPEND USE_Algorithm_Flags USE_GMRES USE_QMR USE_QMRWLA)
-list(APPEND USE_Algorithm_Flags USE_GMRES)
+list(APPEND USE_Algorithm_Flags USE_GMRES USE_QMR USE_QMRWLA)
 
 list(APPEND GMRESRunners FloatGMRES DoubleGMRES LongDoubleGMRES Posit16GMRES Posit32GMRES Posit64GMRES)
-list(APPEND QMRRunners FloatQMR DoubleQMR LongDoubleQMR Posit162QMR Posit32QMR Posit64QMR)
+list(APPEND QMRRunners FloatQMR DoubleQMR LongDoubleQMR Posit16QMR Posit32QMR Posit64QMR)
 list(APPEND QMRWLARunners FloatQMRWLA DoubleQMRWLA LongDoubleQMRWLA Posit16QMRWLA Posit32QMRWLA Posit64QMRWLA)
 
-# list(APPEND RUNNERS GMRESRunners QMRRunners QMRWLARunners)
-list(APPEND RUNNERS GMRESRunners)
+list(APPEND RUNNERS GMRESRunners QMRRunners QMRWLARunners)
 
 foreach(runners algorithm IN ZIP_LISTS RUNNERS USE_Algorithm_Flags)
+    message("Runners: ${runners}")
     foreach(runner type IN ZIP_LISTS ${runners} USE_Type_Flags)
         add_executable(${runner} src/main.cxx)
         target_link_libraries(${runner} Eigen3::Eigen OpenMP::OpenMP_CXX EigenUniversalIntegration::EigenUniversalIntegration)

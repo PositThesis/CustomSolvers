@@ -17,22 +17,22 @@ struct LanczosWLAIterResult {
     Scalar beta_n;
     VectorX<Scalar> p_n;
     VectorX<Scalar> q_n;
-}
+};
 
-// n is the 1 based iteration number
+// n is the 0 based iteration number
 template <typename Scalar>
 LanczosWLAIterResult<Scalar> lanczos_wla_step(
     Eigen::Index n,
-    VectorX<Scalar> &v_n,
-    VectorX<Scalar> &w_n,
-    VectorX<Scalar> &p_n_last,
-    VectorX<Scalar> &q_n_last,
+    Eigen::Ref<VectorX<Scalar>> v_n,
+    Eigen::Ref<VectorX<Scalar>> w_n,
+    Eigen::Ref<VectorX<Scalar>> p_n_last,
+    Eigen::Ref<VectorX<Scalar>> q_n_last,
     Scalar xi_n,
     Scalar rho_n,
-    Scalar eps_last,
+    Scalar eps_n_last,
     Scalar beta_n_last,
-    MatrixX<Scalar> A,
-    VectorX<MatrixX> rhs
+    Eigen::Ref<MatrixX<Scalar>> A,
+    Eigen::Ref<VectorX<Scalar>> rhs
 ) {
     Scalar delta_n = v_n.transpose() * w_n;
 
@@ -41,9 +41,9 @@ LanczosWLAIterResult<Scalar> lanczos_wla_step(
     VectorX<Scalar> p_n = v_n;
     VectorX<Scalar> q_n = w_n;
 
-    if (n > 1) {
-        p_n -= p_n_last * xi_n  * delta_n / eps_last;
-        q_n -= q_n_last * rho_n * delta_n / eps_last;
+    if (n > 0) {
+        p_n -= p_n_last * xi_n  * delta_n / eps_n_last;
+        q_n -= q_n_last * rho_n * delta_n / eps_n_last;
     }
 
     Scalar eps_n = q_n.adjoint() * A * p_n;
@@ -57,19 +57,19 @@ LanczosWLAIterResult<Scalar> lanczos_wla_step(
 
     if (rho_next == 0 || xi_next == 0) throw false;
 
-    v_next /= rho_next();
-    w_next /= xi_next();
+    v_next /= rho_next;
+    w_next /= xi_next;
 
-    VectorX<Scalar> h_next = VectorX<Scalar>::Zero(n+1);
-    if (n == 1) {
+    VectorX<Scalar> h_next = VectorX<Scalar>::Zero(n+2);
+    if (n == 0) {
         // initial case. Since n is known to be 1, there is only two entries
         h_next(0) = beta_n;
         h_next(1) = rho_next;
     } else {
-        Scalar a_current = xi_n * delta_n / eps_last;
-        h_next(n - 2) = beta_n_last * a_current;
-        h_next(n - 1) = beta_n + a_current * rho_n;
-        h_next(n    ) = rho_next;
+        Scalar a_current = xi_n * delta_n / eps_n_last;
+        h_next(n - 1) = beta_n_last * a_current;
+        h_next(n    ) = beta_n + a_current * rho_n;
+        h_next(n + 1) = rho_next;
     }
 
     LanczosWLAIterResult<Scalar> result;

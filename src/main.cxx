@@ -1,6 +1,6 @@
+#include <Eigen/Dense>
 #include <EigenIntegration/Overrides.hpp>
 #include <EigenIntegration/MtxIO.hpp>
-#include <Eigen/Eigen>
 #include <Eigen/Sparse>
 
 #include <universal/number/posit/posit.hpp>
@@ -10,8 +10,8 @@
 #include <cstring>
 
 #include "gmres.hpp"
-// #include "qmr.hpp"
-// #include "qmrwla.hpp"
+#include "qmr.hpp"
+#include "qmr_wla.hpp"
 #include "iteration_result.hpp"
 
 using Eigen::MatrixX;
@@ -23,6 +23,7 @@ int main(int argc, char **argv) {
   std::string output_file("");
   int iters = -1;
   int restart = -1;
+  bool gmres_householder = false;
 
   for (int i = 1; i < argc; i++) {
     if (std::strcmp(argv[i], "-im") == 0) {
@@ -50,6 +51,10 @@ int main(int argc, char **argv) {
       restart = std::stoi(argv[i]);
       continue;
     }
+    if (std::strcmp(argv[i], "-hh") == 0) {
+      gmres_householder = true;
+      continue;
+    }
     std::cerr << "unknown option: " << argv[i] << std::endl;
     return -1;
   }
@@ -58,6 +63,7 @@ int main(int argc, char **argv) {
   assert(input_vector.length() > 0);
   assert(output_file.length() > 0);
   (void)restart; // silence unused warnings
+  (void)gmres_householder;
 
 #ifdef USE_Float
   using Scalar = float;
@@ -89,21 +95,29 @@ int main(int argc, char **argv) {
 #ifdef USE_GMRES
   SolverResult<Scalar> result;
   if (restart > 0) {
-    result = run_gmres_restart<Scalar>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart);
+    if (gmres_householder) {
+      result = run_gmres_householder_restart<Scalar>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart);
+    } else {
+      result = run_gmres_restart<Scalar>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart);
+    }
   } else {
-    result = run_gmres_householder_no_restart<Scalar>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+    if (gmres_householder) {
+      result = run_gmres_householder_no_restart<Scalar>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+    } else {
+      result = run_gmres_no_restart<Scalar>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+    }
   }
 #endif
 #ifdef USE_QMR
-  // SolverResult<Scalar> result = run_qmr_la<Scalar>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+  SolverResult<Scalar> result = run_qmr_la<Scalar>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
 #endif
 #ifdef USE_QMRWLA
-  // SolverResult<Scalar> result = run_qmr_wla<Scalar>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+  SolverResult<Scalar> result = run_qmr_wla<Scalar>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
 #endif
   std::ofstream file(output_file + ".csv");
   file << "time [μs],iteration,residual" << std::endl;
 
-  for (uint64_t i = 0; i < result.durations.size(); i++) {
+  for (uint64_t i = 0; i < result.residuals.size(); i++) {
     file << result.durations[i] << "," << i << "," << result.residuals[i] << std::endl;
     std::cout << "residual " << i << ": " << result.residuals[i] << std::endl;
   }
