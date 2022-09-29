@@ -1,4 +1,5 @@
 #include <Eigen/Dense>
+#include <Eigen/Sparse>
 #include <EigenIntegration/Overrides.hpp>
 #include <EigenIntegration/MtxIO.hpp>
 #include <Eigen/Sparse>
@@ -15,6 +16,7 @@
 #include "iteration_result.hpp"
 
 using Eigen::MatrixX;
+using Eigen::SparseMatrix;
 using Eigen::VectorX;
 
 int main(int argc, char **argv) {
@@ -24,6 +26,7 @@ int main(int argc, char **argv) {
   int iters = -1;
   int restart = -1;
   bool gmres_householder = false;
+  bool sparse = false;
 
   for (int i = 1; i < argc; i++) {
     if (std::strcmp(argv[i], "-im") == 0) {
@@ -53,6 +56,10 @@ int main(int argc, char **argv) {
     }
     if (std::strcmp(argv[i], "-hh") == 0) {
       gmres_householder = true;
+      continue;
+    }
+    if (std::strcmp(argv[i], "-sparse") == 0) {
+      sparse = true;
       continue;
     }
     std::cerr << "unknown option: " << argv[i] << std::endl;
@@ -94,25 +101,51 @@ int main(int argc, char **argv) {
 
 #ifdef USE_GMRES
   SolverResult<Scalar> result;
-  if (restart > 0) {
-    if (gmres_householder) {
-      result = run_gmres_householder_restart<Scalar>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart);
+  if (sparse) {
+    if (restart > 0) {
+      if (gmres_householder) {
+        result = run_gmres_householder_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart);
+      } else {
+        result = run_gmres_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart);
+      }
     } else {
-      result = run_gmres_restart<Scalar>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart);
+      if (gmres_householder) {
+        result = run_gmres_householder_no_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+      } else {
+        result = run_gmres_no_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+      }
     }
   } else {
-    if (gmres_householder) {
-      result = run_gmres_householder_no_restart<Scalar>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+    if (restart > 0) {
+      if (gmres_householder) {
+        result = run_gmres_householder_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart);
+      } else {
+        result = run_gmres_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart);
+      }
     } else {
-      result = run_gmres_no_restart<Scalar>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+      if (gmres_householder) {
+        result = run_gmres_householder_no_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+      } else {
+        result = run_gmres_no_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+      }
     }
   }
 #endif
 #ifdef USE_QMR
-  SolverResult<Scalar> result = run_qmr_la<Scalar>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+  SolverResult<Scalar> result;
+  if (sparse) {
+    result = run_qmr_la<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+  } else {
+    result = run_qmr_la<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+  }
 #endif
 #ifdef USE_QMRWLA
-  SolverResult<Scalar> result = run_qmr_wla<Scalar>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+  SolverResult<Scalar> result;
+  if (sparse) {
+    result = run_qmr_wla<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+  } else {
+    result = run_qmr_wla<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+  }
 #endif
   std::ofstream file(output_file + ".csv");
   file << "time [μs],iteration,residual" << std::endl;

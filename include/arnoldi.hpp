@@ -12,8 +12,8 @@ struct ArnoldiResult {
     VectorX<Scalar> h_n;
 };
 
-template <typename Scalar>
-ArnoldiResult<Scalar> arnoldi_step(MatrixX<Scalar> V, MatrixX<Scalar> A, VectorX<Scalar> rhs) {
+template <typename Scalar, typename MatrixType>
+ArnoldiResult<Scalar> arnoldi_step(Eigen::Ref<MatrixX<Scalar>> V, Eigen::Ref<MatrixType> A, Eigen::Ref<VectorX<Scalar>> rhs) {
   VectorX<Scalar> v_next = A * V.col(V.cols() - 1);
   // removing the contribution in the direction of one vector might change the contributions in the directions of other vectors, cannot do all at once
   // VectorX<Scalar> h_n = V.adjoint() * v_next;

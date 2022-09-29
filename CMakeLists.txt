@@ -16,12 +16,7 @@ option(OPENMP  "Enable OpenMP"                  ON)
 if(DEBUG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 else(DEBUG)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native -ftree-vectorize") # add -DNDEBUG later when everything works
-    if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
-        set(CMAKE_BUILD_PARALLEL_LEVEL 1)
-    else(${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpmath=sse -mavx2 -msse3 -msse2")
-    endif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native") # add -DNDEBUG later when everything works
 
     if(OPENMP)
         message("using openmp")
@@ -45,7 +40,6 @@ list(APPEND QMRWLARunners FloatQMRWLA DoubleQMRWLA LongDoubleQMRWLA Posit16QMRWL
 list(APPEND RUNNERS GMRESRunners QMRRunners QMRWLARunners)
 
 foreach(runners algorithm IN ZIP_LISTS RUNNERS USE_Algorithm_Flags)
-    message("Runners: ${runners}")
     foreach(runner type IN ZIP_LISTS ${runners} USE_Type_Flags)
         add_executable(${runner} src/main.cxx)
         target_link_libraries(${runner} Eigen3::Eigen OpenMP::OpenMP_CXX EigenUniversalIntegration::EigenUniversalIntegration)

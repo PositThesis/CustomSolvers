@@ -9,8 +9,8 @@
 using Eigen::MatrixX;
 using Eigen::VectorX;
 
-template <typename Scalar>
-SolverResult<Scalar> run_qmr_wla(MatrixX<Scalar> A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters) {
+template <typename Scalar, typename MatrixType>
+SolverResult<Scalar> run_qmr_wla(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters) {
     assert(A.rows() == rhs.rows());
     std::cout << "start QMR WLA" << std::endl;
 
@@ -30,7 +30,7 @@ SolverResult<Scalar> run_qmr_wla(MatrixX<Scalar> A, VectorX<Scalar> rhs, VectorX
     for (Eigen::Index iter = 0; iter < iters; iter++) {
         LanczosWLAIterResult<Scalar> iter_result;
         try {
-            iter_result = lanczos_wla_step<Scalar>(iter, V.col(V.cols() - 1), W.col(W.cols() - 1), p_n, q_n, xi_n, rho_n, eps_n_last, beta_n_last, A, rhs);
+            iter_result = lanczos_wla_step<Scalar, MatrixType>(iter, V.col(V.cols() - 1), W.col(W.cols() - 1), p_n, q_n, xi_n, rho_n, eps_n_last, beta_n_last, A, rhs);
         } catch(bool fail) {
             std::cout << "QMR WLA breakdown" << std::endl;
             break;
@@ -63,7 +63,7 @@ SolverResult<Scalar> run_qmr_wla(MatrixX<Scalar> A, VectorX<Scalar> rhs, VectorX
     }
     std::cout << "QMR WLA iteration done" << std::endl;
 
-    std::vector<Scalar> residuals = solve_all_least_squares(H, V, A, rhs, x_0, rho_0);
+    std::vector<Scalar> residuals = solve_all_least_squares<Scalar, MatrixType>(H, V, A, rhs, x_0, rho_0);
     for (uint64_t idx = 0; idx < residuals.size(); idx++) {
         result.residuals.push_back(residuals[idx]);
     }

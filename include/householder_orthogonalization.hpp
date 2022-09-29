@@ -33,8 +33,8 @@ std::pair<VectorX<Scalar>, Scalar> make_householder_vector(VectorX<Scalar> &to_r
   return std::pair(householder_vector/householder_vector.norm(), beta);
 }
 
-template <typename Scalar>
-HouseholderResult<Scalar> householder_step(MatrixX<Scalar> &W, MatrixX<Scalar> &A, VectorX<Scalar> &z_n_last) {
+template <typename Scalar, typename MatrixType>
+HouseholderResult<Scalar> householder_step(MatrixX<Scalar> &W, MatrixType &A, VectorX<Scalar> &z_n_last) {
   auto householder_result = make_householder_vector<Scalar>(z_n_last, W.cols());
   VectorX<Scalar> w_n = householder_result.first;
   Scalar beta = householder_result.second;

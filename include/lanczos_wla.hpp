@@ -20,7 +20,7 @@ struct LanczosWLAIterResult {
 };
 
 // n is the 0 based iteration number
-template <typename Scalar>
+template <typename Scalar, typename MatrixType>
 LanczosWLAIterResult<Scalar> lanczos_wla_step(
     Eigen::Index n,
     Eigen::Ref<VectorX<Scalar>> v_n,
@@ -31,7 +31,7 @@ LanczosWLAIterResult<Scalar> lanczos_wla_step(
     Scalar rho_n,
     Scalar eps_n_last,
     Scalar beta_n_last,
-    Eigen::Ref<MatrixX<Scalar>> A,
+    Eigen::Ref<MatrixType> A,
     Eigen::Ref<VectorX<Scalar>> rhs
 ) {
     Scalar delta_n = v_n.transpose() * w_n;

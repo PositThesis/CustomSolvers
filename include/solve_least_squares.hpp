@@ -2,6 +2,7 @@
 #include "qr.hpp"
 #include <Eigen/Dense>
 #include <vector>
+#include <EigenIntegration/MtxIO.hpp>
 
 using Eigen::VectorX;
 using Eigen::MatrixX;
@@ -34,13 +35,12 @@ VectorX<Scalar> solve_least_squares(QRDecompositionResult<Scalar> &qr, Scalar rh
     return z;
 }
 
-template <typename Scalar>
-std::vector<Scalar> solve_all_least_squares(MatrixX<Scalar> &H, MatrixX<Scalar> &V, MatrixX<Scalar> &A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Scalar rho_0) {
+template <typename Scalar, typename MatrixType>
+std::vector<Scalar> solve_all_least_squares(MatrixX<Scalar> &H, MatrixX<Scalar> &V, MatrixType &A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Scalar rho_0) {
     std::vector<Scalar> residuals;
     QRDecompositionResult<Scalar> qr = qr_decompose_hessenberg(H);
 
     for (Eigen::Index iter = 0; iter < H.cols(); iter++) {
-        // MatrixX<Scalar> H_sub = H.block(0, 0, iter+2, iter+1);
         VectorX<Scalar> z = solve_least_squares<Scalar>(qr, rho_0, iter+1);
         VectorX<Scalar> x = x_0 + V.block(0, 0, V.rows(), iter+1) * z;
 

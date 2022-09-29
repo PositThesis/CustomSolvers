@@ -14,7 +14,7 @@ struct LanczosLAIterResult {
 };
 
 // k is the 0 based lanczos block index
-template <typename Scalar>
+template <typename Scalar, typename MatrixType>
 LanczosLAIterResult<Scalar> lanczos_la_step(
     Eigen::Index n,
     Eigen::Index k,
@@ -23,7 +23,7 @@ LanczosLAIterResult<Scalar> lanczos_la_step(
     MatrixX<Scalar> &V_k_last,
     MatrixX<Scalar> &W_k_last,
     MatrixX<Scalar> &D_last,
-    MatrixX<Scalar> &A,
+    MatrixType &A,
     VectorX<Scalar> &rhs
 ) {
   MatrixX<Scalar> D = W_k.adjoint() * V_k;
@@ -73,12 +73,12 @@ LanczosLAIterResult<Scalar> lanczos_la_step(
   Scalar xi = w_next.norm();
 
   if (rho < 1e-7 || xi == 1e-7)
-    throw false; // there is only one throw condition, no need for fancy types
+    throw false; // there is only one throw condition, no need for special types
 
   v_next /= rho;
   w_next /= xi;
 
-  h_n(n+1) = rho; // h_n has n rows: n+1 is the last row
+  h_n(n+1) = rho; // h_n has n+2 rows: n+1 is the last row
 
   LanczosLAIterResult<Scalar> result;
   result.h_n = h_n;

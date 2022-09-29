@@ -8,11 +8,10 @@
 #include <chrono>
 #include <vector>
 
-using Eigen::MatrixX;
 using Eigen::VectorX;
 
-template <typename Scalar>
-SolverResult<Scalar> run_gmres_no_restart(MatrixX<Scalar> A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters) {
+template <typename Scalar, typename MatrixType>
+SolverResult<Scalar> run_gmres_no_restart(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters) {
     assert(A.rows() == rhs.rows());
 
     VectorX<Scalar> initial_residual = rhs - A * x_0;
@@ -25,7 +24,7 @@ SolverResult<Scalar> run_gmres_no_restart(MatrixX<Scalar> A, VectorX<Scalar> rhs
     result.residuals.push_back(rho_0);
 
     for (Eigen::Index iter = 0; iter < iters; iter++) {
-        ArnoldiResult<Scalar> iter_result = arnoldi_step<Scalar>(V, A, rhs);
+        ArnoldiResult<Scalar> iter_result = arnoldi_step<Scalar, MatrixType>(V, A, rhs);
         // conservativeResize leaves the values unititialized, so set the newest row and col to 0 before inserting h_n
         H.conservativeResize(iter_result.h_n.rows(), iter + 1);
         H.row(iter_result.h_n.rows() - 1).setZero();
@@ -38,11 +37,11 @@ SolverResult<Scalar> run_gmres_no_restart(MatrixX<Scalar> A, VectorX<Scalar> rhs
 
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
         if (iter % 10 == 0) {
-            std::cout << "GMRES iteration " << iter << " done" << std::endl;
+            std::cout << "GMRES iteration " << iter << " / " << iters << " done" << std::endl;
         }
     }
 
-    std::vector<Scalar> residuals = solve_all_least_squares(H, V, A, rhs, x_0, rho_0);
+    std::vector<Scalar> residuals = solve_all_least_squares<Scalar, MatrixType>(H, V, A, rhs, x_0, rho_0);
     for (uint64_t idx = 0; idx < residuals.size(); idx++) {
         result.residuals.push_back(residuals[idx]);
     }
@@ -53,8 +52,8 @@ SolverResult<Scalar> run_gmres_no_restart(MatrixX<Scalar> A, VectorX<Scalar> rhs
     return result;
 }
 
-template <typename Scalar>
-SolverResult<Scalar> run_gmres_restart(MatrixX<Scalar> A, VectorX<Scalar> rhs, MatrixX<Scalar> x_0, Eigen::Index iters, Eigen::Index restart) {
+template <typename Scalar, typename MatrixType>
+SolverResult<Scalar> run_gmres_restart(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters, Eigen::Index restart) {
     assert(A.rows() == rhs.rows());
     assert(restart > 0);
 
@@ -74,7 +73,7 @@ SolverResult<Scalar> run_gmres_restart(MatrixX<Scalar> A, VectorX<Scalar> rhs, M
 
     Eigen::Index inner_iter = 0;
     for (Eigen::Index iter = 0; iter < iters; iter++) {
-        ArnoldiResult<Scalar> iter_result = arnoldi_step<Scalar>(V, A, rhs);
+        ArnoldiResult<Scalar> iter_result = arnoldi_step<Scalar, MatrixType>(V, A, rhs);
         H.conservativeResize(iter_result.h_n.rows(), (inner_iter + 1));
         H.row(iter_result.h_n.rows() - 1).setZero();
         H.col(inner_iter).setZero();
@@ -108,7 +107,7 @@ SolverResult<Scalar> run_gmres_restart(MatrixX<Scalar> A, VectorX<Scalar> rhs, M
         }
 
         if (iter % 10 == 0) {
-            std::cout << "GMRES iteration " << iter << " done" << std::endl;
+            std::cout << "GMRES iteration " << iter << " / " << iters << " done" << std::endl;
         }
 
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
@@ -119,7 +118,7 @@ SolverResult<Scalar> run_gmres_restart(MatrixX<Scalar> A, VectorX<Scalar> rhs, M
         MatrixX<Scalar> H_ = Hs[block];
         Scalar rho_0_ = rho_0s[block];
         VectorX<Scalar> x_0_ = x_0s[block];
-        std::vector<Scalar> residuals = solve_all_least_squares<Scalar>(H_, V_, A, rhs, x_0_, rho_0_);
+        std::vector<Scalar> residuals = solve_all_least_squares<Scalar, MatrixType>(H_, V_, A, rhs, x_0_, rho_0_);
         for (uint64_t idx = 0; idx < residuals.size(); idx++) {
             result.residuals.push_back(residuals[idx]);
         }
@@ -132,8 +131,8 @@ SolverResult<Scalar> run_gmres_restart(MatrixX<Scalar> A, VectorX<Scalar> rhs, M
 }
 
 
-template <typename Scalar>
-SolverResult<Scalar> run_gmres_householder_no_restart(MatrixX<Scalar> A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters) {
+template <typename Scalar, typename MatrixType>
+SolverResult<Scalar> run_gmres_householder_no_restart(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters) {
     assert(A.rows() == rhs.rows());
     assert(iters > 0);
     
@@ -149,7 +148,7 @@ SolverResult<Scalar> run_gmres_householder_no_restart(MatrixX<Scalar> A, VectorX
     result.residuals.push_back(rho_0);
 
     for (Eigen::Index iter = 0; iter < iters + 1; iter++) {
-        HouseholderResult<Scalar> iter_result = householder_step<Scalar>(W, A, z);
+        HouseholderResult<Scalar> iter_result = householder_step<Scalar, MatrixType>(W, A, z);
         if (iter > 0) {
             // conservativeResize leaves the values unititialized, so set the newest row and col to 0 before inserting h_n
             H.conservativeResize(std::max(rhs.rows(), iter+1), iter);
@@ -176,13 +175,13 @@ SolverResult<Scalar> run_gmres_householder_no_restart(MatrixX<Scalar> A, VectorX
 
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
         if (iter % 10 == 0) {
-            std::cout << "GMRES householder iteration " << iter << " done" << std::endl;
+            std::cout << "GMRES householder iteration " << iter << " / " << iters << " done" << std::endl;
         }
     }
 
     // there is a warning about beta being perhaps unititialized here. As long as the loop runs at least once, beta will be initialized
     // given the iters > 0 assertion above, this should always be the case.
-    std::vector<Scalar> residuals = solve_all_least_squares(H, V, A, rhs, x_0, beta);
+    std::vector<Scalar> residuals = solve_all_least_squares<Scalar, MatrixType>(H, V, A, rhs, x_0, beta);
     for (uint64_t idx = 0; idx < residuals.size(); idx++) {
         result.residuals.push_back(residuals[idx]);
     }
@@ -193,8 +192,8 @@ SolverResult<Scalar> run_gmres_householder_no_restart(MatrixX<Scalar> A, VectorX
     return result;
 }
 
-template <typename Scalar>
-SolverResult<Scalar> run_gmres_householder_restart(MatrixX<Scalar> A, VectorX<Scalar> rhs, MatrixX<Scalar> x_0, Eigen::Index iters, Eigen::Index restart) {
+template <typename Scalar, typename MatrixType>
+SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters, Eigen::Index restart) {
     assert(A.rows() == rhs.rows());
     assert(restart > 0);
 
@@ -218,7 +217,7 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixX<Scalar> A, VectorX<Sc
 
     Eigen::Index inner_iter = 0;
     for (Eigen::Index iter = 0; iter < iters+1; iter++) {
-        HouseholderResult<Scalar> iter_result = householder_step<Scalar>(W, A, z);
+        HouseholderResult<Scalar> iter_result = householder_step<Scalar, MatrixType>(W, A, z);
         if (inner_iter > 0) {
             // conservativeResize leaves the values unititialized, so set the newest row and col to 0 before inserting h_n
             H.conservativeResize(std::max(rhs.rows(), inner_iter+1), inner_iter);
@@ -263,7 +262,7 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixX<Scalar> A, VectorX<Sc
             QRDecompositionResult<Scalar> qr = qr_decompose_hessenberg(H);
             // do not confuse this with the iteration z
             VectorX<Scalar> z_ = solve_least_squares<Scalar>(qr, beta, H.cols());
-            VectorX<Scalar> x = x_0 + V.block(0, 0, V.rows(), inner_iter-1) * z_; // inner_iter we run inner_iter until restart+1
+            VectorX<Scalar> x = x_0 + V.block(0, 0, V.rows(), inner_iter-1) * z_; // inner_iter, because we run inner_iter until restart+1
 
             x_0 = x;
             z = rhs - A * x_0;
@@ -276,7 +275,7 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixX<Scalar> A, VectorX<Sc
         }
 
         if (iter % 10 == 0) {
-            std::cout << "GMRES housholder iteration " << iter << " done" << std::endl;
+            std::cout << "GMRES housholder iteration " << iter << " / " << iters << " done" << std::endl;
         }
 
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
@@ -287,7 +286,7 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixX<Scalar> A, VectorX<Sc
         MatrixX<Scalar> H_ = Hs[block];
         Scalar beta_ = betas[block];
         VectorX<Scalar> x_0_ = x_0s[block];
-        std::vector<Scalar> residuals = solve_all_least_squares<Scalar>(H_, V_, A, rhs, x_0_, beta_);
+        std::vector<Scalar> residuals = solve_all_least_squares<Scalar, MatrixType>(H_, V_, A, rhs, x_0_, beta_);
         for (uint64_t idx = 0; idx < residuals.size(); idx++) {
             result.residuals.push_back(residuals[idx]);
         }
