@@ -151,11 +151,9 @@ SolverResult<Scalar> run_gmres_householder_no_restart(MatrixType A, VectorX<Scal
         HouseholderResult<Scalar> iter_result = householder_step<Scalar, MatrixType>(W, A, z);
         if (iter > 0) {
             // conservativeResize leaves the values unititialized, so set the newest row and col to 0 before inserting h_n
-            H.conservativeResize(std::max(rhs.rows(), iter+1), iter);
-            if (H.rows() > rhs.rows()) {
-                H.row(H.rows() - 1).setZero();
-            }
-            H.col(iter-1).head(rhs.rows()) = iter_result.h_n_last;
+            H.conservativeResize(iter+1, iter);
+            H.row(H.rows() - 1).setZero();
+            H.col(iter-1).head(iter+1) = iter_result.h_n_last.head(iter+1);
         }
         
         if (iter == 0) {
@@ -205,11 +203,9 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar>
     std::vector<MatrixX<Scalar>> Ws;
     std::vector<MatrixX<Scalar>> Vs;
     std::vector<MatrixX<Scalar>> Hs;
-    std::vector<Scalar> rho_0s;
     std::vector<Scalar> betas;
     std::vector<VectorX<Scalar>> x_0s;
     Scalar beta;
-
 
     SolverResult<Scalar> result;
     result.timestamps.push_back(std::chrono::high_resolution_clock::now());
@@ -220,11 +216,9 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar>
         HouseholderResult<Scalar> iter_result = householder_step<Scalar, MatrixType>(W, A, z);
         if (inner_iter > 0) {
             // conservativeResize leaves the values unititialized, so set the newest row and col to 0 before inserting h_n
-            H.conservativeResize(std::max(rhs.rows(), inner_iter+1), inner_iter);
-            if (H.rows() > rhs.rows()) {
-                H.row(H.rows() - 1).setZero();
-            }
-            H.col(inner_iter-1).head(rhs.rows()) = iter_result.h_n_last;
+            H.conservativeResize(inner_iter+1, inner_iter);
+            H.row(H.rows() - 1).setZero();
+            H.col(inner_iter-1).head(inner_iter+1) = iter_result.h_n_last.head(inner_iter+1);
         }
 
         if (inner_iter == 0) {
@@ -255,7 +249,6 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar>
 
             Vs.push_back(V_);
             Hs.push_back(H_);
-            rho_0s.push_back(z.norm());
             x_0s.push_back(x_0_);
             betas.push_back(beta);
 
@@ -290,6 +283,72 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar>
         for (uint64_t idx = 0; idx < residuals.size(); idx++) {
             result.residuals.push_back(residuals[idx]);
         }
+    }
+
+    fill_durations<Scalar>(result);
+    make_residuals_relative<Scalar>(result);
+
+    return result;
+}
+
+template <typename Scalar, typename MatrixType>
+SolverResult<Scalar> run_gmres_householder_like_eigen_no_restart(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters) {
+    assert(A.rows() == rhs.rows());
+
+    VectorX<Scalar> r0 = rhs - A * x_0;
+
+    std::vector<HouseholderData<Scalar>> hh_data;
+    std::vector<VectorX<Scalar>> v_n;
+    std::vector<VectorX<Scalar>> h_n;
+
+    SolverResult<Scalar> result;
+    result.timestamps.push_back(std::chrono::high_resolution_clock::now());
+    result.residuals.push_back(r0.norm());
+
+    // make first hh vector
+    hh_data.push_back(make_householder_vector_like_eigen<Scalar>(r0));
+
+    for(Eigen::Index iter = 0; iter < iters; iter++) {
+        HouseholderStepResult<Scalar> hh_step;
+        try {
+            hh_step = householder_step_like_eigen<Scalar, MatrixType>(hh_data, A);
+        } catch(bool fail) {
+            break;
+        }
+
+        hh_data.push_back(hh_step.hh_data);
+        v_n.push_back(hh_step.v_n);
+        h_n.push_back(hh_step.h_n);
+
+        result.timestamps.push_back(std::chrono::high_resolution_clock::now());
+        if (iter % 10 == 0) {
+            std::cout << "GMRES eigen like householder iteration " << iter << " / " << iters << " done" << std::endl;
+        }
+    }
+    std::cout << "GMRES eigen like householder finished" << std::endl;
+
+    // assemble H and V matrices. Using two separate loops in case their size differs (due to some change)
+    MatrixX<Scalar> V = MatrixX<Scalar>::Zero(A.rows(), v_n.size());
+    for (Eigen::Index idx = 0; idx < v_n.size(); idx++) {
+        V.col(idx) = v_n[idx];
+    }
+    std::cout << "built V" << std::endl;
+    std::cout << "making a "  << h_n.size() << " square matrix" << std::endl;
+    MatrixX<Scalar> H = MatrixX<Scalar>::Zero(h_n.size(), h_n.size());
+    std::cout << "initialized H " << std::endl;
+    for (Eigen::Index idx = 0; idx < h_n.size(); idx++) {
+        std::cout << "in loop" << std::endl;
+        std::cout << "inserting a " << h_n[idx].rows() << "x" << h_n[idx].cols() << " vector" << std::endl;
+        std::cout << "h: " << h_n[idx].transpose() << std::endl;
+        std::cout << " into a " << H.col(idx).head(h_n[idx].size()).rows() << "x" << H.col(idx).head(h_n[idx].size()).cols() << " slice" << std::endl;
+        // skip the first one. That one is only for beta
+        H.col(idx).head(h_n[idx].size()) = h_n[idx];
+    }
+    std::cout << "Created H: " << H.rows() << "x" << H.cols() << std::endl;
+
+    std::vector<Scalar> residuals = solve_all_least_squares<Scalar, MatrixType>(H, V, A, rhs, x_0, hh_data[0].beta);
+    for (uint64_t idx = 0; idx < residuals.size(); idx++) {
+        result.residuals.push_back(residuals[idx]);
     }
 
     fill_durations<Scalar>(result);

@@ -65,3 +65,76 @@ HouseholderResult<Scalar> householder_step(MatrixX<Scalar> &W, MatrixType &A, Ve
   result.beta = beta;
   return result;
 }
+
+template <typename Scalar>
+struct HouseholderData {
+  VectorX<Scalar> hh_tail;
+  Scalar tau;
+  Scalar beta;
+};
+
+template <typename Scalar>
+struct HouseholderStepResult {
+  HouseholderData<Scalar> hh_data;
+  VectorX<Scalar> h_n;
+  VectorX<Scalar> v_n;
+};
+
+template <typename Scalar>
+HouseholderData<Scalar> make_householder_vector_like_eigen(Eigen::Ref<VectorX<Scalar>> input) {
+  Scalar beta = (input.coeffRef(0) > 0 ? -1 : 1) * input.norm();
+  VectorX<Scalar> hh = input.tail(input.size() - 1) / (input.coeffRef(0) - beta);
+  Scalar tau = 1 - input.coeffRef(0) / beta;
+
+  HouseholderData<Scalar> data;
+  data.hh_tail = hh;
+  data.beta = beta;
+  data.tau = tau;
+
+  return data;
+}
+
+template <typename Scalar>
+void apply_householder_like_eigen(Eigen::Ref<VectorX<Scalar>> input, HouseholderData<Scalar> &hh_data) {
+  MatrixX<Scalar> tmp_1 = hh_data.hh_tail.adjoint() * input.tail(hh_data.hh_tail.size());
+  Scalar tmp = tmp_1.coeffRef(0, 0) + input.coeffRef(0);
+  input.coeffRef(0) -= hh_data.tau * tmp;
+  input.tail(hh_data.hh_tail.size()) -= hh_data.tau * hh_data.hh_tail * tmp;
+}
+
+template <typename Scalar, typename MatrixType>
+HouseholderStepResult<Scalar> householder_step_like_eigen(std::vector<HouseholderData<Scalar>> &W, MatrixType &A) {
+  Eigen::Index k = W.size();
+  Eigen::Index m = A.rows();
+
+  if (m < k) {
+    // cannot make such a unit vector
+    throw false;
+  }
+
+  VectorX<Scalar> v = VectorX<Scalar>::Unit(m, k-1);
+
+  for (int32_t idx = W.size() - 1; idx >= 0; idx--) {
+    apply_householder_like_eigen<Scalar>(v, W[idx]);
+  }
+
+  // store the column v
+  Eigen::VectorX<Scalar> v_n = v;
+
+  v = A * v;
+
+  for (uint32_t idx = 0; idx < W.size(); idx++) {
+    apply_householder_like_eigen<Scalar>(v, W[idx]);
+  }
+
+  HouseholderData<Scalar> hh_data = make_householder_vector_like_eigen<Scalar>(v.tail(m - k));
+
+  apply_householder_like_eigen<Scalar>(v, hh_data); // turn v into h_n
+
+  HouseholderStepResult<Scalar> result;
+  result.hh_data = hh_data;
+  result.h_n = v; // be careful with the names here.
+  result.v_n = v_n;
+
+  return result;
+}

@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
       }
     } else {
       if (gmres_householder) {
-        result = run_gmres_householder_no_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+        result = run_gmres_householder_like_eigen_no_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
       } else {
         result = run_gmres_no_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
       }
@@ -124,7 +124,7 @@ int main(int argc, char **argv) {
       }
     } else {
       if (gmres_householder) {
-        result = run_gmres_householder_no_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
+        result = run_gmres_householder_like_eigen_no_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
       } else {
         result = run_gmres_no_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters);
       }
