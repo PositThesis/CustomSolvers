@@ -50,7 +50,7 @@ std::vector<Scalar> solve_all_least_squares(MatrixX<Scalar> &H, MatrixX<Scalar> 
             std::cout << "residual " << iter << " / " << H.cols() << " done" << std::endl;
         }
     }
-    std::cout << "rediduals done" << std::endl;
+    std::cout << "residuals done" << std::endl;
 
     return residuals;
 }

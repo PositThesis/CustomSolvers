@@ -39,6 +39,12 @@ list(APPEND QMRWLARunners FloatQMRWLA DoubleQMRWLA LongDoubleQMRWLA Posit16QMRWL
 
 list(APPEND RUNNERS GMRESRunners QMRRunners QMRWLARunners)
 
+add_executable(Tests src/tests.cxx)
+target_link_libraries(Tests Eigen3::Eigen OpenMP::OpenMP_CXX EigenUniversalIntegration::EigenUniversalIntegration)
+target_include_directories(Tests PUBLIC "${PROJECT_BINARY_DIR}" "include" universal)
+install(TARGETS Tests DESTINATION bin)
+add_test(NAME Tests COMMAND Tests)
+
 foreach(runners algorithm IN ZIP_LISTS RUNNERS USE_Algorithm_Flags)
     foreach(runner type IN ZIP_LISTS ${runners} USE_Type_Flags)
         add_executable(${runner} src/main.cxx)
