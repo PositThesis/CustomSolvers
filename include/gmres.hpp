@@ -148,12 +148,17 @@ SolverResult<Scalar> run_gmres_householder_no_restart(MatrixType A, VectorX<Scal
 
     for (Eigen::Index iter = 0; iter < iters + 1; iter++) {
         HouseholderResult<Scalar> iter_result = householder_step<Scalar, MatrixType>(W, A, z);
+        std::cout << "finished iter" << std::endl;
         if (iter > 0) {
             // conservativeResize leaves the values unititialized, so set the newest row and col to 0 before inserting h_n
             H.conservativeResize(iter+1, iter);
             H.row(H.rows() - 1).setZero();
-            H.col(iter-1).head(iter+1) = iter_result.h_n_last.head(iter+1);
+            H.col(H.cols() - 1).setZero();
+            Eigen::Index h_length = std::min(iter_result.h_n_last.size(), iter+1);
+            H.col(iter-1).head(h_length) = iter_result.h_n_last.head(h_length);
         }
+
+        std::cout << "enlarged H" << std::endl;
         
         if (iter == 0) {
             beta = iter_result.beta;
