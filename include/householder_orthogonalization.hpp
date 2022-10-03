@@ -19,14 +19,12 @@ struct HouseholderResult {
 
 template <typename Scalar>
 VectorX<Scalar> apply_householder_vector(VectorX<Scalar> &w, VectorX<Scalar> &rhs) {
-  std::cout << "applying householder of size " << w.size() << " to vector of size " << rhs.size() << std::endl;
   rhs.tail(w.size()) -= 2 * (w * ( w.transpose() * rhs.tail(w.size())));
   return rhs;
 }
 
 template <typename Scalar>
 std::pair<VectorX<Scalar>, Scalar> make_householder_vector(VectorX<Scalar> &to_rotate, Eigen::Index pivot) {
-  std::cout << "making householder of size " << to_rotate.size() - pivot << std::endl;
   Eigen::Index vector_size = to_rotate.size() - pivot;
   if (vector_size < 1) return std::pair(VectorX<Scalar>::Zero(0), 0);
   VectorX<Scalar> householder_vector = to_rotate.tail(to_rotate.rows() - pivot);
@@ -45,7 +43,6 @@ HouseholderResult<Scalar> householder_step(std::vector<VectorX<Scalar>> &W, Matr
 
 
   VectorX<Scalar> h_n_last = apply_householder_vector<Scalar>(w_n, z_n_last);
-  std::cout << "h_n_last " << h_n_last.transpose().head(10) << std::endl;
 
   VectorX<Scalar> v_n = VectorX<Scalar>::Zero(z_n_last.rows());
   if (W.size() < v_n.rows()) v_n(W.size()) = 1;

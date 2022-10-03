@@ -175,7 +175,6 @@ int main(int argc, char **argv) {
 
   for (uint64_t i = 0; i < result.residuals.size(); i++) {
     file << result.durations[i] << "," << i << "," << result.residuals[i] << std::endl;
-    std::cout << "residual " << i << ": " << result.residuals[i] << std::endl;
   }
 
   file.close();

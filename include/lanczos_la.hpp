@@ -45,7 +45,13 @@ LanczosLAIterResult<Scalar> lanczos_la_step(
   VectorX<Scalar> h_n = VectorX<Scalar>::Zero(n+2);
 
   if (regular) {
-    MatrixX<Scalar> D_inv = D.inverse();
+    MatrixX<Scalar> D_inv;
+    if (D.rows() > 1) {
+      D_inv = D.inverse();
+    } else {
+      D_inv = MatrixX<Scalar>::Zero(1, 1);
+      D_inv.coeffRef(0, 0) = 1/D.coeff(0, 0);
+    }
 
     alpha = D_inv * W_k.adjoint() * A * v_n;
     alphaW = D_inv * V_k.adjoint() * A.adjoint() * w_n;
@@ -55,7 +61,13 @@ LanczosLAIterResult<Scalar> lanczos_la_step(
   }
 
   if (k > 0) {
-    MatrixX<Scalar> D_last_inv = D_last.inverse();
+    MatrixX<Scalar> D_last_inv;
+    if (D_last.rows() > 1) {
+      D_last_inv = D_last.inverse();
+    } else {
+      D_last_inv = MatrixX<Scalar>::Zero(1, 1);
+      D_last_inv.coeffRef(0, 0) = 1/D_last.coeff(0, 0);
+    }
     beta = D_last_inv * W_k_last.adjoint() * A * v_n;
     betaW = D_last_inv * V_k_last.adjoint() * A.adjoint() * w_n;
     Eigen::Index leading_zeros = (n + 2) - 1 - alpha.rows() - beta.rows(); // total rows - rho - alpha - beta

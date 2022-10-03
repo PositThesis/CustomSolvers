@@ -148,7 +148,6 @@ SolverResult<Scalar> run_gmres_householder_no_restart(MatrixType A, VectorX<Scal
 
     for (Eigen::Index iter = 0; iter < iters + 1; iter++) {
         HouseholderResult<Scalar> iter_result = householder_step<Scalar, MatrixType>(W, A, z);
-        std::cout << "finished iter" << std::endl;
         if (iter > 0) {
             // conservativeResize leaves the values unititialized, so set the newest row and col to 0 before inserting h_n
             H.conservativeResize(iter+1, iter);
@@ -157,8 +156,6 @@ SolverResult<Scalar> run_gmres_householder_no_restart(MatrixType A, VectorX<Scal
             Eigen::Index h_length = std::min(iter_result.h_n_last.size(), iter+1);
             H.col(iter-1).head(h_length) = iter_result.h_n_last.head(h_length);
         }
-
-        std::cout << "enlarged H" << std::endl;
         
         if (iter == 0) {
             beta = iter_result.beta;
@@ -473,7 +470,6 @@ SolverResult<Scalar> run_gmres_householder_like_eigen_restart(MatrixType A, Vect
             // skip the first one. That one is only for beta
             H.col(idx).head(idx+2) = h_n[outer_iter][idx].head(idx+2);
         }
-        std::cout << "Created H: " << H.rows() << "x" << H.cols() << std::endl;
 
         std::vector<Scalar> residuals = solve_all_least_squares<Scalar, MatrixType>(H, V, A, rhs, x_0s[outer_iter], hh_data[outer_iter][0].beta);
         for (uint64_t idx = 0; idx < residuals.size(); idx++) {
