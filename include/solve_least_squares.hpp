@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 #include <vector>
 #include <EigenIntegration/MtxIO.hpp>
+#include <cmath>
 
 using Eigen::VectorX;
 using Eigen::MatrixX;
@@ -44,7 +45,9 @@ std::vector<Scalar> solve_all_least_squares(MatrixX<Scalar> &H, MatrixX<Scalar> 
         VectorX<Scalar> z = solve_least_squares<Scalar>(qr, rho_0, iter+1);
         VectorX<Scalar> x = x_0 + V.block(0, 0, V.rows(), iter+1) * z;
 
-        Scalar residual = (rhs - A * x).norm();
+        VectorX<Scalar> error = (rhs - A * x);
+        Scalar res_squared = error.transpose() * error;
+        Scalar residual = std::sqrt(res_squared);
         residuals.push_back(residual);
         if (iter % 10 == 0) {
             std::cout << "residual " << iter << " / " << H.cols() << " done" << std::endl;
