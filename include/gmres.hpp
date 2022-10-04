@@ -37,8 +37,8 @@ SolverResult<Scalar> run_gmres_no_restart(MatrixType A, VectorX<Scalar> rhs, Vec
 
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
         if (iter % 10 == 0) {
-            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter] - result.timestamps[std::max(0, (int)iter - 10)]).count();
-            std::cout << "GMRES iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter - std::max(0, (int)iter - 10)) << " μs per iteration" << std::endl;
+            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
+            std::cout << "GMRES iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " μs per iteration" << std::endl;
         }
     }
 
@@ -108,8 +108,8 @@ SolverResult<Scalar> run_gmres_restart(MatrixType A, VectorX<Scalar> rhs, Vector
         }
 
         if (iter % 10 == 0) {
-            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter] - result.timestamps[std::max(0, (int)iter - 10)]).count();
-            std::cout << "GMRES iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter - std::max(0, (int)iter - 10)) << " μs per iteration" << std::endl;
+            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
+            std::cout << "GMRES iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " μs per iteration" << std::endl;
         }
 
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
@@ -175,8 +175,8 @@ SolverResult<Scalar> run_gmres_householder_no_restart(MatrixType A, VectorX<Scal
 
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
         if (iter % 10 == 0) {
-            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter] - result.timestamps[std::max(0, (int)iter - 10)]).count();
-            std::cout << "GMRES householder iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter - std::max(0, (int)iter - 10)) << " μs per iteration" << std::endl;
+            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
+            std::cout << "GMRES householder iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " μs per iteration" << std::endl;
         }
     }
 
@@ -271,8 +271,8 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar>
         }
 
         if (iter % 10 == 0) {
-            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter] - result.timestamps[std::max(0, (int)iter - 10)]).count();
-            std::cout << "GMRES housholder iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter - std::max(0, (int)iter - 10)) << " μs per iteration" << std::endl;
+            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
+            std::cout << "GMRES housholder iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " μs per iteration" << std::endl;
         }
 
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
@@ -332,8 +332,8 @@ SolverResult<Scalar> run_gmres_householder_like_eigen_no_restart(MatrixType A, V
 
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
         if (iter % 10 == 0) {
-            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter] - result.timestamps[std::max(0, (int)iter - 10)]).count();
-            std::cout << "GMRES eigen like householder iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter - std::max(0, (int)iter - 10)) << " μs per iteration" << std::endl;
+            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
+            std::cout << "GMRES eigen like householder iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " μs per iteration" << std::endl;
         }
 
         if (hh_step.last) {
@@ -456,8 +456,8 @@ SolverResult<Scalar> run_gmres_householder_like_eigen_restart(MatrixType A, Vect
 
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
         if (iter % 10 == 0) {
-            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter] - result.timestamps[std::max(0, (int)iter - 10)]).count();
-            std::cout << "GMRES eigen like householder iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter - std::max(0, (int)iter - 10)) << " μs per iteration" << std::endl;
+            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
+            std::cout << "GMRES eigen like householder iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " μs per iteration" << std::endl;
         }
     }
     std::cout << "GMRES eigen like householder finished" << std::endl;

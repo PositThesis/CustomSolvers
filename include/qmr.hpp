@@ -68,11 +68,11 @@ SolverResult<Scalar> run_qmr_la(MatrixType A, VectorX<Scalar> rhs, VectorX<Scala
             W_k.col(W_k.cols()-1) = iter_result.w_next;
         }
 
-        if (iter % 10 == 0) {
-            std::cout << "QMR LA iteration " << iter << " done" << std::endl;
-        }
-
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
+        if (iter % 10 == 0) {
+            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
+            std::cout << "QMR LA iteration " << iter << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " μs per iteration" << std::endl;
+        }
     }
     std::cout << "QMR LA iteration done" << std::endl;
 
