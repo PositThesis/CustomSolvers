@@ -22,9 +22,11 @@ SolverResult<Scalar> run_qmr_wla(MatrixType A, VectorX<Scalar> rhs, VectorX<Scal
     VectorX<Scalar> precond_initial_residual = rhs_precond - A_precond * x_0;
     Scalar precond_rho_0 = std::sqrt((Scalar)(precond_initial_residual.adjoint()*precond_initial_residual));
 
-    MatrixX<Scalar> V = precond_initial_residual / precond_rho_0;
+    // the runtime of this algorithm was dominated by the cost of moving the matrices, so preallocate
+    MatrixX<Scalar> V = MatrixX<Scalar>::Zero(A.rows(), iters+1);
+    V.col(0) = precond_initial_residual / precond_rho_0;
     MatrixX<Scalar> W = V;
-    MatrixX<Scalar> H;
+    MatrixX<Scalar> H = MatrixX<Scalar>::Zero(iters + 1, iters);
 
     VectorX<Scalar> p_n, q_n;
     Scalar rho_n, xi_n, eps_n_last, beta_n_last;
@@ -33,26 +35,23 @@ SolverResult<Scalar> run_qmr_wla(MatrixType A, VectorX<Scalar> rhs, VectorX<Scal
     result.timestamps.push_back(std::chrono::high_resolution_clock::now());
     result.residuals.push_back(rho_0);
 
+    Eigen::Index last_successful_iter = 0;
+
     for (Eigen::Index iter = 0; iter < iters; iter++) {
         LanczosWLAIterResult<Scalar> iter_result;
         try {
-            iter_result = lanczos_wla_step<Scalar, MatrixType>(iter, V.col(V.cols() - 1), W.col(W.cols() - 1), p_n, q_n, xi_n, rho_n, eps_n_last, beta_n_last, A_precond, rhs_precond);
+            iter_result = lanczos_wla_step<Scalar, MatrixType>(iter, V.col(iter), W.col(iter), p_n, q_n, xi_n, rho_n, eps_n_last, beta_n_last, A_precond, rhs_precond);
         } catch(bool fail) {
             std::cout << "QMR WLA breakdown" << std::endl;
             break;
         }
 
-        // always add to V, W and H
-        H.conservativeResize(iter_result.h_next.rows(), H.cols() + 1);
+        if (iter == 3547) break;
 
-        H.row(iter_result.h_next.rows() - 1).setZero();
-        H.col(H.cols() - 1) = iter_result.h_next;
-
-        V.conservativeResize(Eigen::NoChange, V.cols() + 1);
-        V.col(V.cols() - 1) = iter_result.v_next;
-
-        W.conservativeResize(Eigen::NoChange, W.cols() + 1);
-        W.col(W.cols() - 1) = iter_result.w_next;
+        H.col(iter).head(iter_result.h_next.size()) = iter_result.h_next;
+        // these had one initial column
+        V.col(iter+1) = iter_result.v_next;
+        W.col(iter+1) = iter_result.w_next;
 
         p_n = iter_result.p_n;
         q_n = iter_result.q_n;
@@ -60,6 +59,8 @@ SolverResult<Scalar> run_qmr_wla(MatrixType A, VectorX<Scalar> rhs, VectorX<Scal
         xi_n = iter_result.xi_next;
         eps_n_last = iter_result.eps_n;
         beta_n_last = iter_result.beta_n;
+
+        last_successful_iter = iter;
 
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
         if (iter % 10 == 0) {
@@ -72,7 +73,12 @@ SolverResult<Scalar> run_qmr_wla(MatrixType A, VectorX<Scalar> rhs, VectorX<Scal
     }
     std::cout << "QMR WLA iteration done" << std::endl;
 
-    std::vector<Scalar> residuals = solve_all_least_squares<Scalar, MatrixType>(H, V, A, rhs, x_0, precond_rho_0);
+    MatrixX<Scalar> V_ = V.block(0, 0, V.rows(), last_successful_iter + 1);
+    MatrixX<Scalar> H_ = H.block(0, 0, last_successful_iter + 2, last_successful_iter + 1);
+
+    std::cout << "made blocks" << std::endl;
+
+    std::vector<Scalar> residuals = solve_all_least_squares<Scalar, MatrixType>(H_, V_, A, rhs, x_0, precond_rho_0);
     for (uint64_t idx = 0; idx < residuals.size(); idx++) {
         result.residuals.push_back(residuals[idx]);
     }

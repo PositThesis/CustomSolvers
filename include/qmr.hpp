@@ -37,6 +37,8 @@ SolverResult<Scalar> run_qmr_la(MatrixType A, VectorX<Scalar> rhs, VectorX<Scala
 
     Eigen::Index k = 0;
 
+    Eigen::Index last_successful_iteration = 0;
+
     for (Eigen::Index iter = 0; iter < iters; iter++) {
         LanczosLAIterResult<Scalar> iter_result;
         try {

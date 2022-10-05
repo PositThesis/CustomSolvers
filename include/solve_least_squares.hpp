@@ -52,6 +52,20 @@ std::vector<Scalar> solve_all_least_squares(MatrixX<Scalar> &H, MatrixX<Scalar> 
         if (iter % 10 == 0) {
             std::cout << "residual " << iter << " / " << H.cols() << " done" << std::endl;
         }
+        if (iter > 1000) {
+            // skip 4 values
+            for (int j = 0; j < 4 && ++iter < H.cols(); j++) {
+                residuals.push_back(-1000);
+            }
+            std::cout << "residual " << iter << " / " << H.cols() << " done" << std::endl;
+        }
+        if (iter > 2000) {
+            // skip 5 more values
+            for (int j = 0; j < 5 && ++iter < H.cols(); j++) {
+                residuals.push_back(-1000);
+            }
+            std::cout << "residual " << iter << " / " << H.cols() << " done" << std::endl;
+        }
     }
     std::cout << "residuals done" << std::endl;
 
