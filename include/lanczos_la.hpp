@@ -27,7 +27,8 @@ LanczosLAIterResult<Scalar> lanczos_la_step(
     VectorX<Scalar> &rhs
 ) {
   MatrixX<Scalar> D = W_k.adjoint() * V_k;
-  Eigen::SelfAdjointEigenSolver<MatrixX<Scalar>> es(D, false);
+  // singular values of D are the roots of the eigenvalues of D.adjoint() * D
+  Eigen::SelfAdjointEigenSolver<MatrixX<Scalar>> es(D.adjoint() * D, false);
   Scalar min_singular = es.eigenvalues().cwiseAbs().minCoeff();
   bool regular = min_singular > 1e-7;
 
@@ -39,8 +40,12 @@ LanczosLAIterResult<Scalar> lanczos_la_step(
   VectorX<Scalar> v_n = V_k.col(V_k.cols() - 1);
   VectorX<Scalar> w_n = W_k.col(W_k.cols() - 1);
 
-  VectorX<Scalar> v_next = A * v_n;
-  VectorX<Scalar> w_next = A.adjoint() * w_n;
+  // only compute these once, are needed for alpha and beta again
+  VectorX<Scalar> A_v_n = A * v_n;
+  VectorX<Scalar> A_adj_w_n = A.adjoint() * w_n;
+
+  VectorX<Scalar> v_next = A_v_n;
+  VectorX<Scalar> w_next = A_adj_w_n;
 
   VectorX<Scalar> h_n = VectorX<Scalar>::Zero(n+2);
 
@@ -53,8 +58,8 @@ LanczosLAIterResult<Scalar> lanczos_la_step(
       D_inv.coeffRef(0, 0) = 1/D.coeff(0, 0);
     }
 
-    alpha = D_inv * W_k.adjoint() * A * v_n;
-    alphaW = D_inv * V_k.adjoint() * A.adjoint() * w_n;
+    alpha = D_inv * (W_k.adjoint() * A_v_n);
+    alphaW = D_inv * (V_k.adjoint() * A_adj_w_n);
 
     v_next -= V_k * alpha;
     w_next -= W_k * alphaW;
@@ -68,8 +73,9 @@ LanczosLAIterResult<Scalar> lanczos_la_step(
       D_last_inv = MatrixX<Scalar>::Zero(1, 1);
       D_last_inv.coeffRef(0, 0) = 1/D_last.coeff(0, 0);
     }
-    beta = D_last_inv * W_k_last.adjoint() * A * v_n;
-    betaW = D_last_inv * V_k_last.adjoint() * A.adjoint() * w_n;
+
+    beta = D_last_inv * (W_k_last.adjoint() * A_v_n);
+    betaW = D_last_inv * (V_k_last.adjoint() * A_adj_w_n);
     Eigen::Index leading_zeros = (n + 2) - 1 - alpha.rows() - beta.rows(); // total rows - rho - alpha - beta
 
     v_next -= V_k_last * beta;

@@ -46,10 +46,12 @@ LanczosWLAIterResult<Scalar> lanczos_wla_step(
         q_n -= q_n_last * rho_n * delta_n / eps_n_last;
     }
 
-    Scalar eps_n = q_n.adjoint() * A * p_n;
+    VectorX<Scalar> A_p_n = A * p_n;
+
+    Scalar eps_n = q_n.adjoint() * A_p_n;
     Scalar beta_n = eps_n / delta_n;
 
-    VectorX<Scalar> v_next = A * p_n - v_n * beta_n;
+    VectorX<Scalar> v_next = A_p_n - v_n * beta_n;
     VectorX<Scalar> w_next = A.adjoint() * q_n - w_n * beta_n;
 
     Scalar rho_next = v_next.norm();
