@@ -28,11 +28,13 @@ std::pair<VectorX<Scalar>, Scalar> make_householder_vector(VectorX<Scalar> &to_r
   Eigen::Index vector_size = to_rotate.size() - pivot;
   if (vector_size < 1) return std::pair(VectorX<Scalar>::Zero(0), 0);
   VectorX<Scalar> householder_vector = to_rotate.tail(to_rotate.rows() - pivot);
-  Scalar beta = householder_vector.norm();
+  Scalar beta_sq = householder_vector.adjoint() * householder_vector;
+  Scalar beta = std::sqrt(beta_sq);
   if (householder_vector(0) > 0) beta *= -1;
   householder_vector(0) -= beta;
   if (householder_vector.norm() == 0) return std::pair(VectorX<Scalar>::Zero(0), 0);
-  return std::pair(householder_vector/householder_vector.norm(), beta);
+  Scalar norm_sq = householder_vector.adjoint() * householder_vector;
+  return std::pair(householder_vector/std::sqrt(norm_sq), beta);
 }
 
 template <typename Scalar, typename MatrixType>
@@ -86,7 +88,8 @@ struct HouseholderStepResult {
 
 template <typename Scalar>
 HouseholderData<Scalar> make_householder_vector_like_eigen(Eigen::Ref<VectorX<Scalar>> input) {
-  Scalar beta = (input.coeffRef(0) > 0 ? -1 : 1) * input.norm();
+  Scalar input_norm_sq = input.adjoint() * input;
+  Scalar beta = (input.coeffRef(0) > 0 ? -1 : 1) * std::sqrt(input_norm_sq);
   VectorX<Scalar> hh = input.tail(input.size() - 1) / (input.coeffRef(0) - beta);
   Scalar tau = (beta - input.coeffRef(0)) / beta;
 

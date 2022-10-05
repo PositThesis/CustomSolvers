@@ -221,7 +221,9 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar>
             // conservativeResize leaves the values unititialized, so set the newest row and col to 0 before inserting h_n
             H.conservativeResize(inner_iter+1, inner_iter);
             H.row(H.rows() - 1).setZero();
-            H.col(inner_iter-1).head(inner_iter+1) = iter_result.h_n_last.head(inner_iter+1);
+            H.col(H.cols() - 1).setZero();
+            Eigen::Index h_length = std::min(iter_result.h_n_last.size(), inner_iter+1);
+            H.col(H.cols() - 1).head(h_length) = iter_result.h_n_last.head(h_length);
         }
 
         if (inner_iter == 0) {
@@ -270,12 +272,11 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar>
 
         }
 
+        result.timestamps.push_back(std::chrono::high_resolution_clock::now());
         if (iter % 10 == 0) {
             int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
             std::cout << "GMRES housholder iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " μs per iteration" << std::endl;
         }
-
-        result.timestamps.push_back(std::chrono::high_resolution_clock::now());
     }
 
     for (uint64_t block = 0; block < Vs.size(); block ++) {
