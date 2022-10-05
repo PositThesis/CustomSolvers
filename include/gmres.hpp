@@ -253,8 +253,6 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar>
     result.timestamps.push_back(std::chrono::high_resolution_clock::now());
     result.residuals.push_back(rho_0);
 
-    std::cout << "r0: " << z.transpose().head(10) << std::endl;
-
     Eigen::Index inner_iter = 0;
     for (Eigen::Index iter = 0; iter < iters+1; iter++) {
         HouseholderResult<Scalar> iter_result = householder_step<Scalar, MatrixType>(W, A_precond, z);
@@ -277,9 +275,6 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar>
             // the new column will be overridden immediately, no need to setZero
             V.conservativeResize(rhs.rows(), inner_iter + 1);
             V.col(inner_iter) = iter_result.v_n;
-
-            std::cout << "v: "<< iter_result.v_n.transpose().head(10) << std::endl;
-            std::cout << "v norm: "<< iter_result.v_n.norm() << std::endl;
 
             W.push_back(iter_result.w_n);
 
@@ -415,7 +410,6 @@ SolverResult<Scalar> run_gmres_householder_like_eigen_no_restart(MatrixType A, V
         // skip the first one. That one is only for beta
         H.col(idx).head(idx+2) = h_n[idx].head(idx+2);
     }
-    std::cout << "Created H: " << H.rows() << "x" << H.cols() << std::endl;
 
     std::vector<Scalar> residuals = solve_all_least_squares<Scalar, MatrixType>(H, V, A, rhs, x_0, hh_data[0].beta);
     for (uint64_t idx = 0; idx < residuals.size(); idx++) {
