@@ -7,16 +7,23 @@
 #include <Eigen/Dense>
 #include <chrono>
 #include <vector>
+#include "precondition.hpp"
 
 using Eigen::VectorX;
+using Eigen::DiagonalPreconditioner;
 
 template <typename Scalar, typename MatrixType>
-SolverResult<Scalar> run_gmres_no_restart(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters) {
+SolverResult<Scalar> run_gmres_no_restart(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters, bool precond) {
     assert(A.rows() == rhs.rows());
 
     VectorX<Scalar> initial_residual = rhs - A * x_0;
-    Scalar rho_0 = initial_residual.norm();
-    MatrixX<Scalar> V = initial_residual / initial_residual.norm();
+    Scalar rho_0 = std::sqrt((Scalar)(initial_residual.adjoint()*initial_residual));
+
+    auto [A_precond, rhs_precond] = precondition<Scalar, MatrixType>(A, rhs, precond);
+
+    VectorX<Scalar> precond_initial_residual = rhs_precond - A_precond * x_0;
+    Scalar precond_rho_0 = std::sqrt((Scalar)(precond_initial_residual.adjoint()*precond_initial_residual));
+    MatrixX<Scalar> V = precond_initial_residual / precond_rho_0;
     MatrixX<Scalar> H = MatrixX<Scalar>::Zero(iters, iters+1);
 
     SolverResult<Scalar> result;
@@ -24,7 +31,7 @@ SolverResult<Scalar> run_gmres_no_restart(MatrixType A, VectorX<Scalar> rhs, Vec
     result.residuals.push_back(rho_0);
 
     for (Eigen::Index iter = 0; iter < iters; iter++) {
-        ArnoldiResult<Scalar> iter_result = arnoldi_step<Scalar, MatrixType>(V, A, rhs);
+        ArnoldiResult<Scalar> iter_result = arnoldi_step<Scalar, MatrixType>(V, A_precond, rhs_precond);
         // conservativeResize leaves the values unititialized, so set the newest row and col to 0 before inserting h_n
         H.conservativeResize(iter_result.h_n.rows(), iter + 1);
         H.row(iter_result.h_n.rows() - 1).setZero();
@@ -37,8 +44,11 @@ SolverResult<Scalar> run_gmres_no_restart(MatrixType A, VectorX<Scalar> rhs, Vec
 
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
         if (iter % 10 == 0) {
-            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
-            std::cout << "GMRES iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " μs per iteration" << std::endl;
+            int ms = std::chrono::duration_cast<std::chrono::milliseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
+            std::cout << "GMRES iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " ms per iteration" << std::endl;
+        }
+        if (std::chrono::duration_cast<std::chrono::seconds>(result.timestamps[iter + 1] - result.timestamps[0]).count() > 5*3600) {
+            break;
         }
     }
 
@@ -54,13 +64,18 @@ SolverResult<Scalar> run_gmres_no_restart(MatrixType A, VectorX<Scalar> rhs, Vec
 }
 
 template <typename Scalar, typename MatrixType>
-SolverResult<Scalar> run_gmres_restart(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters, Eigen::Index restart) {
+SolverResult<Scalar> run_gmres_restart(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters, Eigen::Index restart, bool precond) {
     assert(A.rows() == rhs.rows());
     assert(restart > 0);
 
     VectorX<Scalar> initial_residual = rhs - A * x_0;
+    Scalar rho_0 = std::sqrt((Scalar)(initial_residual.adjoint()*initial_residual));
 
-    MatrixX<Scalar> V = initial_residual / initial_residual.norm();
+    auto [A_precond, rhs_precond] = precondition<Scalar, MatrixType>(A, rhs, precond);
+
+    VectorX<Scalar> precond_initial_residual = rhs_precond - A_precond * x_0;
+    Scalar precond_rho_0 = std::sqrt((Scalar)(precond_initial_residual.adjoint()*precond_initial_residual));
+    MatrixX<Scalar> V = precond_initial_residual / precond_rho_0;
     MatrixX<Scalar> H;
     std::vector<MatrixX<Scalar>> Vs;
     std::vector<MatrixX<Scalar>> Hs;
@@ -70,11 +85,11 @@ SolverResult<Scalar> run_gmres_restart(MatrixType A, VectorX<Scalar> rhs, Vector
 
     SolverResult<Scalar> result;
     result.timestamps.push_back(std::chrono::high_resolution_clock::now());
-    result.residuals.push_back(initial_residual.norm());
+    result.residuals.push_back(rho_0);
 
     Eigen::Index inner_iter = 0;
     for (Eigen::Index iter = 0; iter < iters; iter++) {
-        ArnoldiResult<Scalar> iter_result = arnoldi_step<Scalar, MatrixType>(V, A, rhs);
+        ArnoldiResult<Scalar> iter_result = arnoldi_step<Scalar, MatrixType>(V, A_precond, rhs_precond);
         H.conservativeResize(iter_result.h_n.rows(), (inner_iter + 1));
         H.row(iter_result.h_n.rows() - 1).setZero();
         H.col(inner_iter).setZero();
@@ -92,27 +107,33 @@ SolverResult<Scalar> run_gmres_restart(MatrixType A, VectorX<Scalar> rhs, Vector
 
             Vs.push_back(V_);
             Hs.push_back(H_);
-            rho_0s.push_back(initial_residual.norm());
+            rho_0s.push_back(precond_rho_0);
             x_0s.push_back(x_0_);
 
             QRDecompositionResult<Scalar> qr = qr_decompose_hessenberg(H);
-            VectorX<Scalar> z = solve_least_squares<Scalar>(qr, initial_residual.norm(), H.cols());
+            VectorX<Scalar> z = solve_least_squares<Scalar>(qr, precond_rho_0, H.cols());
             VectorX<Scalar> x = x_0 + V.block(0, 0, V.rows(), inner_iter) * z; // inner_iter has already been increased this run
 
+            VectorX<Scalar> initial_residual = rhs - A * x_0;
+            Scalar rho_0 = std::sqrt((Scalar)(initial_residual.adjoint()*initial_residual));
+
             x_0 = x;
-            initial_residual = rhs - A * x_0;
+            precond_initial_residual = rhs_precond - A_precond * x_0;
+            precond_rho_0 = std::sqrt((Scalar)(precond_initial_residual.adjoint()*precond_initial_residual));
             H.resize(0, 0);
-            V = initial_residual / initial_residual.norm();
+            V = precond_initial_residual / precond_rho_0;
 
             inner_iter = 0;
         }
 
-        if (iter % 10 == 0) {
-            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
-            std::cout << "GMRES iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " μs per iteration" << std::endl;
-        }
-
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
+        if (iter % 10 == 0) {
+            int ms = std::chrono::duration_cast<std::chrono::milliseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
+            std::cout << "GMRES iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " ms per iteration" << std::endl;
+        }
+        if (std::chrono::duration_cast<std::chrono::seconds>(result.timestamps[iter + 1] - result.timestamps[0]).count() > 5*3600) {
+            break;
+        }
     }
 
     for (uint64_t block = 0; block < Vs.size(); block ++) {
@@ -133,12 +154,19 @@ SolverResult<Scalar> run_gmres_restart(MatrixType A, VectorX<Scalar> rhs, Vector
 }
 
 template <typename Scalar, typename MatrixType>
-SolverResult<Scalar> run_gmres_householder_no_restart(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters) {
+SolverResult<Scalar> run_gmres_householder_no_restart(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters, bool precond) {
     assert(A.rows() == rhs.rows());
     assert(iters > 0);
     
-    VectorX<Scalar> z = rhs - A * x_0;
-    Scalar rho_0 = z.norm();
+    VectorX<Scalar> initial_residual = rhs - A * x_0;
+    Scalar rho_0 = std::sqrt((Scalar)(initial_residual.adjoint()*initial_residual));
+
+    auto [A_precond, rhs_precond] = precondition<Scalar, MatrixType>(A, rhs, precond);
+
+    VectorX<Scalar> precond_initial_residual = rhs_precond - A_precond * x_0;
+    Scalar precond_rho_0 = std::sqrt((Scalar)(precond_initial_residual.adjoint()*precond_initial_residual));
+
+    VectorX<Scalar> z = precond_initial_residual;
     Scalar beta;
     std::vector<VectorX<Scalar>> W;
     MatrixX<Scalar> H;
@@ -149,7 +177,7 @@ SolverResult<Scalar> run_gmres_householder_no_restart(MatrixType A, VectorX<Scal
     result.residuals.push_back(rho_0);
 
     for (Eigen::Index iter = 0; iter < iters + 1; iter++) {
-        HouseholderResult<Scalar> iter_result = householder_step<Scalar, MatrixType>(W, A, z);
+        HouseholderResult<Scalar> iter_result = householder_step<Scalar, MatrixType>(W, A_precond, z);
         if (iter > 0) {
             // conservativeResize leaves the values unititialized, so set the newest row and col to 0 before inserting h_n
             H.conservativeResize(iter+1, iter);
@@ -175,8 +203,11 @@ SolverResult<Scalar> run_gmres_householder_no_restart(MatrixType A, VectorX<Scal
 
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
         if (iter % 10 == 0) {
-            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
-            std::cout << "GMRES householder iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " μs per iteration" << std::endl;
+            int ms = std::chrono::duration_cast<std::chrono::milliseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
+            std::cout << "GMRES householder iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " ms per iteration" << std::endl;
+        }
+        if (std::chrono::duration_cast<std::chrono::seconds>(result.timestamps[iter + 1] - result.timestamps[0]).count() > 5*3600) {
+            break;
         }
     }
 
@@ -194,11 +225,19 @@ SolverResult<Scalar> run_gmres_householder_no_restart(MatrixType A, VectorX<Scal
 }
 
 template <typename Scalar, typename MatrixType>
-SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters, Eigen::Index restart) {
+SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters, Eigen::Index restart, bool precond) {
     assert(A.rows() == rhs.rows());
     assert(restart > 0);
 
-    VectorX<Scalar> z = rhs - A * x_0;
+    VectorX<Scalar> initial_residual = rhs - A * x_0;
+    Scalar rho_0 = std::sqrt((Scalar)(initial_residual.adjoint()*initial_residual));
+
+    auto [A_precond, rhs_precond] = precondition<Scalar, MatrixType>(A, rhs, precond);
+
+    VectorX<Scalar> precond_initial_residual = rhs_precond - A_precond * x_0;
+    Scalar precond_rho_0 = std::sqrt((Scalar)(precond_initial_residual.adjoint()*precond_initial_residual));
+
+    VectorX<Scalar> z = precond_initial_residual;
 
     std::vector<VectorX<Scalar>> W;
     MatrixX<Scalar> V;
@@ -212,11 +251,13 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar>
 
     SolverResult<Scalar> result;
     result.timestamps.push_back(std::chrono::high_resolution_clock::now());
-    result.residuals.push_back(z.norm());
+    result.residuals.push_back(rho_0);
+
+    std::cout << "r0: " << z.transpose().head(10) << std::endl;
 
     Eigen::Index inner_iter = 0;
     for (Eigen::Index iter = 0; iter < iters+1; iter++) {
-        HouseholderResult<Scalar> iter_result = householder_step<Scalar, MatrixType>(W, A, z);
+        HouseholderResult<Scalar> iter_result = householder_step<Scalar, MatrixType>(W, A_precond, z);
         if (inner_iter > 0) {
             // conservativeResize leaves the values unititialized, so set the newest row and col to 0 before inserting h_n
             H.conservativeResize(inner_iter+1, inner_iter);
@@ -224,6 +265,7 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar>
             H.col(H.cols() - 1).setZero();
             Eigen::Index h_length = std::min(iter_result.h_n_last.size(), inner_iter+1);
             H.col(H.cols() - 1).head(h_length) = iter_result.h_n_last.head(h_length);
+
         }
 
         if (inner_iter == 0) {
@@ -235,6 +277,9 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar>
             // the new column will be overridden immediately, no need to setZero
             V.conservativeResize(rhs.rows(), inner_iter + 1);
             V.col(inner_iter) = iter_result.v_n;
+
+            std::cout << "v: "<< iter_result.v_n.transpose().head(10) << std::endl;
+            std::cout << "v norm: "<< iter_result.v_n.norm() << std::endl;
 
             W.push_back(iter_result.w_n);
 
@@ -263,7 +308,7 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar>
             VectorX<Scalar> x = x_0 + V.block(0, 0, V.rows(), inner_iter-1) * z_; // inner_iter, because we run inner_iter until restart+1
 
             x_0 = x;
-            z = rhs - A * x_0;
+            z = rhs_precond - A_precond * x_0;
             H.resize(0, 0);
             V.resize(0, 0);
             W = std::vector<VectorX<Scalar>>();
@@ -274,8 +319,11 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar>
 
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
         if (iter % 10 == 0) {
-            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
-            std::cout << "GMRES housholder iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " μs per iteration" << std::endl;
+            int ms = std::chrono::duration_cast<std::chrono::milliseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
+            std::cout << "GMRES housholder iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " ms per iteration" << std::endl;
+        }
+        if (std::chrono::duration_cast<std::chrono::seconds>(result.timestamps[iter + 1] - result.timestamps[0]).count() > 5*3600) {
+            break;
         }
     }
 
@@ -297,10 +345,16 @@ SolverResult<Scalar> run_gmres_householder_restart(MatrixType A, VectorX<Scalar>
 }
 
 template <typename Scalar, typename MatrixType>
-SolverResult<Scalar> run_gmres_householder_like_eigen_no_restart(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters) {
+SolverResult<Scalar> run_gmres_householder_like_eigen_no_restart(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters, bool precond) {
     assert(A.rows() == rhs.rows());
 
-    VectorX<Scalar> r0 = rhs - A * x_0;
+    VectorX<Scalar> initial_residual = rhs - A * x_0;
+    Scalar rho_0 = std::sqrt((Scalar)(initial_residual.adjoint()*initial_residual));
+
+    auto [A_precond, rhs_precond] = precondition<Scalar, MatrixType>(A, rhs, precond);
+
+    VectorX<Scalar> precond_initial_residual = rhs_precond - A_precond * x_0;
+    Scalar precond_rho_0 = std::sqrt((Scalar)(precond_initial_residual.adjoint()*precond_initial_residual));
 
     std::vector<HouseholderData<Scalar>> hh_data;
     std::vector<VectorX<Scalar>> v_n;
@@ -308,10 +362,10 @@ SolverResult<Scalar> run_gmres_householder_like_eigen_no_restart(MatrixType A, V
 
     SolverResult<Scalar> result;
     result.timestamps.push_back(std::chrono::high_resolution_clock::now());
-    result.residuals.push_back(r0.norm());
+    result.residuals.push_back(rho_0);
 
     // make first hh vector
-    hh_data.push_back(make_householder_vector_like_eigen<Scalar>(r0));
+    hh_data.push_back(make_householder_vector_like_eigen<Scalar>(precond_initial_residual));
 
     // to signal whether we reached the end of the Krylov subspace
     // if we did not, we need to remove the last h_n from the residual computation
@@ -320,7 +374,7 @@ SolverResult<Scalar> run_gmres_householder_like_eigen_no_restart(MatrixType A, V
     for(Eigen::Index iter = 0; iter < iters; iter++) {
         HouseholderStepResult<Scalar> hh_step;
         try {
-            hh_step = householder_step_like_eigen<Scalar, MatrixType>(hh_data, A);
+            hh_step = householder_step_like_eigen<Scalar, MatrixType>(hh_data, A_precond);
         } catch(bool fail) {
             break;
         }
@@ -333,8 +387,11 @@ SolverResult<Scalar> run_gmres_householder_like_eigen_no_restart(MatrixType A, V
 
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
         if (iter % 10 == 0) {
-            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
-            std::cout << "GMRES eigen like householder iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " μs per iteration" << std::endl;
+            int ms = std::chrono::duration_cast<std::chrono::milliseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
+            std::cout << "GMRES eigen like householder iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " ms per iteration" << std::endl;
+        }
+        if (std::chrono::duration_cast<std::chrono::seconds>(result.timestamps[iter + 1] - result.timestamps[0]).count() > 5*3600) {
+            break;
         }
 
         if (hh_step.last) {
@@ -372,11 +429,17 @@ SolverResult<Scalar> run_gmres_householder_like_eigen_no_restart(MatrixType A, V
 }
 
 template <typename Scalar, typename MatrixType>
-SolverResult<Scalar> run_gmres_householder_like_eigen_restart(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters, Eigen::Index restart) {
+SolverResult<Scalar> run_gmres_householder_like_eigen_restart(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters, Eigen::Index restart, bool precond) {
     assert(A.rows() == rhs.rows());
     assert(restart > 0);
 
-    VectorX<Scalar> r0 = rhs - A * x_0;
+    VectorX<Scalar> initial_residual = rhs - A * x_0;
+    Scalar rho_0 = std::sqrt((Scalar)(initial_residual.adjoint()*initial_residual));
+
+    auto [A_precond, rhs_precond] = precondition<Scalar, MatrixType>(A, rhs, precond);
+
+    VectorX<Scalar> precond_initial_residual = rhs_precond - A_precond * x_0;
+    Scalar precond_rho_0 = std::sqrt((Scalar)(precond_initial_residual.adjoint()*precond_initial_residual));
 
     std::vector<std::vector<HouseholderData<Scalar>>> hh_data;
     std::vector<std::vector<VectorX<Scalar>>> v_n;
@@ -391,10 +454,10 @@ SolverResult<Scalar> run_gmres_householder_like_eigen_restart(MatrixType A, Vect
 
     SolverResult<Scalar> result;
     result.timestamps.push_back(std::chrono::high_resolution_clock::now());
-    result.residuals.push_back(r0.norm());
+    result.residuals.push_back(rho_0);
 
     // make first hh vector
-    hh_data[0].push_back(make_householder_vector_like_eigen<Scalar>(r0));
+    hh_data[0].push_back(make_householder_vector_like_eigen<Scalar>(precond_initial_residual));
 
     // to signal whether we reached the end of the Krylov subspace
     // if we did not, we need to remove the last h_n from the residual computation
@@ -405,7 +468,7 @@ SolverResult<Scalar> run_gmres_householder_like_eigen_restart(MatrixType A, Vect
     for(Eigen::Index iter = 0; iter < iters; iter++) {
         HouseholderStepResult<Scalar> hh_step;
         try {
-            hh_step = householder_step_like_eigen<Scalar, MatrixType>(hh_data[hh_data.size()-1], A);
+            hh_step = householder_step_like_eigen<Scalar, MatrixType>(hh_data[hh_data.size()-1], A_precond);
         } catch(bool fail) {
             break;
         }
@@ -446,10 +509,10 @@ SolverResult<Scalar> run_gmres_householder_like_eigen_restart(MatrixType A, Vect
 
             // set new guess
             x_0 = x;
-            r0 = rhs - A * x_0;
+            precond_initial_residual = rhs_precond - A_precond * x_0;
 
             // make first hh vector
-            hh_data[hh_data.size() - 1].push_back(make_householder_vector_like_eigen<Scalar>(r0));
+            hh_data[hh_data.size() - 1].push_back(make_householder_vector_like_eigen<Scalar>(precond_initial_residual));
             complete_search.push_back(false);
 
             inner_iter = 0;
@@ -457,8 +520,11 @@ SolverResult<Scalar> run_gmres_householder_like_eigen_restart(MatrixType A, Vect
 
         result.timestamps.push_back(std::chrono::high_resolution_clock::now());
         if (iter % 10 == 0) {
-            int ms = std::chrono::duration_cast<std::chrono::microseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
-            std::cout << "GMRES eigen like householder iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " μs per iteration" << std::endl;
+            int ms = std::chrono::duration_cast<std::chrono::milliseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
+            std::cout << "GMRES eigen like householder iteration " << iter << " / " << iters << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " ms per iteration" << std::endl;
+        }
+        if (std::chrono::duration_cast<std::chrono::seconds>(result.timestamps[iter + 1] - result.timestamps[0]).count() > 5*3600) {
+            break;
         }
     }
     std::cout << "GMRES eigen like householder finished" << std::endl;
