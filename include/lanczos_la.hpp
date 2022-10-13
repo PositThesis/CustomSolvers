@@ -29,7 +29,7 @@ LanczosLAIterResult<Scalar> lanczos_la_step(
   MatrixX<Scalar> D = W_k.adjoint() * V_k;
   // singular values of D are the roots of the eigenvalues of D.adjoint() * D
   Eigen::SelfAdjointEigenSolver<MatrixX<Scalar>> es(D.adjoint() * D, false);
-  Scalar min_singular = es.eigenvalues().cwiseAbs().minCoeff();
+  Scalar min_singular = std::sqrt(es.eigenvalues().cwiseAbs().minCoeff());
   bool regular = min_singular > 1e-7;
 
   VectorX<Scalar> alpha = VectorX<Scalar>::Zero(W_k.cols());

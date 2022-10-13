@@ -46,8 +46,6 @@ SolverResult<Scalar> run_qmr_wla(MatrixType A, VectorX<Scalar> rhs, VectorX<Scal
             break;
         }
 
-        if (iter == 3547) break;
-
         H.col(iter).head(iter_result.h_next.size()) = iter_result.h_next;
         // these had one initial column
         V.col(iter+1) = iter_result.v_next;
