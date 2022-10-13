@@ -1,6 +1,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
-#include <EigenIntegration/Overrides.hpp>
+// #include <EigenIntegration/Overrides.hpp>
+#include <EigenIntegration/std_integration.hpp> // turn off fdp, but retain ability to call std::sqrt on posits
 #include <EigenIntegration/MtxIO.hpp>
 #include <Eigen/Sparse>
 
