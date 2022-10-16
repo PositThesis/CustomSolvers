@@ -1,7 +1,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
-// #include <EigenIntegration/Overrides.hpp>
-#include <EigenIntegration/std_integration.hpp> // turn off fdp, but retain ability to call std::sqrt on posits
+#include <EigenIntegration/Overrides.hpp>
+#include <EigenIntegration/std_integration.hpp>
 #include <EigenIntegration/MtxIO.hpp>
 #include <Eigen/Sparse>
 
@@ -106,6 +106,9 @@ int main(int argc, char **argv) {
 
 #ifdef USE_Posit64
   using Scalar = sw::universal::posit<64, 2>;
+#endif
+#ifdef USE_PositCustom
+  using Scalar = sw::universal::posit<USE_Posit_NBits, USE_Posit_ES>;
 #endif
 
   MatrixX<Scalar> A = get_matrix_from_mtx_file<Scalar>(input_matrix);
