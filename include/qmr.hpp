@@ -11,7 +11,7 @@ using Eigen::MatrixX;
 using Eigen::VectorX;
 
 template <typename Scalar, typename MatrixType>
-SolverResult<Scalar> run_qmr_la(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters, bool precond) {
+SolverResult<Scalar> run_qmr_la(MatrixType A, VectorX<Scalar> rhs, VectorX<Scalar> x_0, Eigen::Index iters, bool precond, int timeout) {
     assert(A.rows() == rhs.rows());
     std::cout << "start QMR LA" << std::endl;
 
@@ -81,7 +81,7 @@ SolverResult<Scalar> run_qmr_la(MatrixType A, VectorX<Scalar> rhs, VectorX<Scala
             long ms = std::chrono::duration_cast<std::chrono::milliseconds>(result.timestamps[iter + 1] - result.timestamps[std::max(0, (int)iter - 9)]).count();
             std::cout << "QMR LA iteration " << iter << " done; current rate is " << ms / (iter + 1 - std::max(0, (int)iter - 9)) << " ms per iteration" << std::endl;
         }
-        if (std::chrono::duration_cast<std::chrono::seconds>(result.timestamps[iter + 1] - result.timestamps[0]).count() > 5*3600) {
+        if (std::chrono::duration_cast<std::chrono::seconds>(result.timestamps[iter + 1] - result.timestamps[0]).count() > timeout) {
             break;
         }
     }

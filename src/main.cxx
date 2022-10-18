@@ -1,6 +1,15 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+
+#if USE_FDP == 1
+#pragma message ("FDP is ON")
 #include <EigenIntegration/Overrides.hpp>
+#else
+// make sure that it is defined at all
+#pragma message ("FDP is OFF")
+static_assert(USE_FDP == 0);
+#endif
+
 #include <EigenIntegration/std_integration.hpp>
 #include <EigenIntegration/MtxIO.hpp>
 #include <Eigen/Sparse>
@@ -30,6 +39,7 @@ int main(int argc, char **argv) {
   bool sparse = false;
   bool eigen_like = false;
   bool precond = false;
+  int timeout = -1;
 
   for (int i = 1; i < argc; i++) {
     if (std::strcmp(argv[i], "-im") == 0) {
@@ -73,6 +83,11 @@ int main(int argc, char **argv) {
       precond = true;
       continue;
     }
+    if (std::strcmp(argv[i], "-timeout") == 0) {
+      i += 1;
+      timeout = std::stoi(argv[i]);
+      continue;
+    }
     std::cerr << "unknown option: " << argv[i] << std::endl;
     return -1;
   }
@@ -80,6 +95,7 @@ int main(int argc, char **argv) {
   assert(input_matrix.length() > 0);
   assert(input_vector.length() > 0);
   assert(output_file.length() > 0);
+  assert(timeout > 0);
   (void)restart; // silence unused warnings
   (void)gmres_householder;
   (void)eigen_like;
@@ -120,44 +136,44 @@ int main(int argc, char **argv) {
     assert(gmres_householder);
     if (sparse) {
       if (restart > 0) {
-        result = run_gmres_householder_like_eigen_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart, precond);
+        result = run_gmres_householder_like_eigen_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart, precond, timeout);
       } else {
-        result = run_gmres_householder_like_eigen_no_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond);
+        result = run_gmres_householder_like_eigen_no_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond, timeout);
       }
     } else {
       if (restart > 0) {
-        result = run_gmres_householder_like_eigen_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart, precond);
+        result = run_gmres_householder_like_eigen_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart, precond, timeout);
       } else {
-        result = run_gmres_householder_like_eigen_no_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond);
+        result = run_gmres_householder_like_eigen_no_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond, timeout);
       }
     }
   } else {
     if (sparse) {
       if (restart > 0) {
         if (gmres_householder) {
-          result = run_gmres_householder_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart, precond);
+          result = run_gmres_householder_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart, precond, timeout);
         } else {
-          result = run_gmres_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart, precond);
+          result = run_gmres_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart, precond, timeout);
         }
       } else {
         if (gmres_householder) {
-          result = run_gmres_householder_no_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond);
+          result = run_gmres_householder_no_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond, timeout);
         } else {
-          result = run_gmres_no_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond);
+          result = run_gmres_no_restart<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond, timeout);
         }
       }
     } else {
       if (restart > 0) {
         if (gmres_householder) {
-          result = run_gmres_householder_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart, precond);
+          result = run_gmres_householder_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart, precond, timeout);
         } else {
-          result = run_gmres_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart, precond);
+          result = run_gmres_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, restart, precond, timeout);
         }
       } else {
         if (gmres_householder) {
-          result = run_gmres_householder_no_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond);
+          result = run_gmres_householder_no_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond, timeout);
         } else {
-          result = run_gmres_no_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond);
+          result = run_gmres_no_restart<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond, timeout);
         }
       }
     }
@@ -166,17 +182,17 @@ int main(int argc, char **argv) {
 #ifdef USE_QMR
   SolverResult<Scalar> result;
   if (sparse) {
-    result = run_qmr_la<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond);
+    result = run_qmr_la<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond, timeout);
   } else {
-    result = run_qmr_la<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond);
+    result = run_qmr_la<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond, timeout);
   }
 #endif
 #ifdef USE_QMRWLA
   SolverResult<Scalar> result;
   if (sparse) {
-    result = run_qmr_wla<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond);
+    result = run_qmr_wla<Scalar, SparseMatrix<Scalar>>(A.sparseView(), rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond, timeout);
   } else {
-    result = run_qmr_wla<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond);
+    result = run_qmr_wla<Scalar, MatrixX<Scalar>>(A, rhs, VectorX<Scalar>::Zero(rhs.rows()), iters, precond, timeout);
   }
 #endif
   std::ofstream file(output_file + ".csv");

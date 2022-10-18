@@ -8,8 +8,6 @@
 using Eigen::VectorX;
 using Eigen::MatrixX;
 
-// template <typename Scalar>
-// VectorX<Scalar> solve_least_squares(MatrixX<Scalar> &H, Scalar rho_0) {
 template <typename Scalar>
 VectorX<Scalar> solve_least_squares(QRDecompositionResult<Scalar> &qr, Scalar rho_0, Eigen::Index size) {
     MatrixX<Scalar> R = qr.R.block(0, 0, size, size);
