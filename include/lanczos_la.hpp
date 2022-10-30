@@ -28,6 +28,8 @@ LanczosLAIterResult<Scalar> lanczos_la_step(
 ) {
   MatrixX<Scalar> D = W_k.adjoint() * V_k;
   // singular values of D are the roots of the eigenvalues of D.adjoint() * D
+  // see: https://en.wikipedia.org/wiki/Singular_value_decomposition 
+  // or "Calculating the Singular Values and Pseudo-Inverse of a Matrix" by G. Golub and W. Kahan in "Journal of the Society for Industrial and Applied Mathematics Series B Numerical Analysis" (1965) https://doi.org/10.1137/0702016
   Eigen::SelfAdjointEigenSolver<MatrixX<Scalar>> es(D.adjoint() * D, false);
   Scalar min_singular = std::sqrt(es.eigenvalues().cwiseAbs().minCoeff());
   bool regular = min_singular > 1e-7;
