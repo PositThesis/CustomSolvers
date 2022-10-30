@@ -70,17 +70,17 @@
         "universal_src": "universal_src"
       },
       "locked": {
-        "lastModified": 1664051490,
-        "narHash": "sha256-QhVEd0WUpDiwNkcjRl7zpG5jJXdSGXpXeZtxLRgx9Tw=",
-        "ref": "master",
-        "rev": "964b113b678d75211aecd4ce3fff9945db5aaacf",
-        "revCount": 28,
-        "type": "git",
-        "url": "http://10.0.0.1:3000/aethan/EigenPositIntegration.git"
+        "lastModified": 1666725971,
+        "narHash": "sha256-jWxeptX/Vq7Znd40ILRqYdqbm+ekuX+s0C4sl7q8X8s=",
+        "owner": "PositThesis",
+        "repo": "EigenUniversalIntegration",
+        "rev": "2505bcd9f959b92ba4f8d48eadefef34b4cfcf9f",
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "http://10.0.0.1:3000/aethan/EigenPositIntegration.git"
+        "owner": "PositThesis",
+        "repo": "EigenUniversalIntegration",
+        "type": "github"
       }
     },
     "root": {

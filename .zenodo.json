@@ -1,0 +1,16 @@
+{
+    "creators": [
+        {
+            "name": "Yannik Böttcher"
+        }
+    ],
+    "description": "Implementation of various Krylov subspace based solvers for systems of linear equations with various data types.",
+    "references": [
+        "R. W. Freund and N. M. Nachtigal. \"An Implementation of the QMR Method Based on Coupled Two-Term Recurrences\". In: SIAM Journal on Scientific Computing 15.2 (1994), pp. 313–337. doi: 10.1137/0915022. eprint: https://doi.org/10.1137/0915022. url: https://doi.org/10.1137/0915022.",
+        "R. W. Freund and N. M. Nachtigal. \"QMR: a quasi-minimal residual method for non-Hermitian linear systems\". In: Numerische Mathematik 60.1 (1991), pp. 315–339. doi: 10.1007/bf01385726. url: https://doi.org/10.1007/bf01385726.",
+        "Y. Saad. Iterative Methods for Sparse Linear Systems. Second. Minneapolis, Minnesota, USA: Society for Industrial and Applied Mathematics, 2003. doi: 10.1137/1.9780898718003. eprint: https://epubs.siam.org/doi/pdf/10.1137/1.9780898718003. url: https://epubs.siam.org/doi/abs/10.1137/1.9780898718003.",
+        "Y. Saad and M. H. Schultz. \"GMRES: a generalized minimal residual algorithm for solving nonsymmetric linear systems\". In: Siam Journal on Scientific and Statistical Computing 7 (1986), pp. 856–869.",
+        "G. Golub and W. Kahan. \"Calculating the Singular Values and Pseudo-Inverse of a Matrix\". In: Journal of the Society for Industrial and Applied Mathematics Series B Numerical Analysis (1965), pp. 205-224"
+    ]
+}
+
